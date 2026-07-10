@@ -1,0 +1,17 @@
+.inp { width:100%; padding:11px 14px; background:rgba(255,255,255,0.05); border:0.5px solid rgba(255,255,255,0.09); border-radius:10px; font-size:13px; color:#fff; outline:none; font-family:'Plus Jakarta Sans',sans-serif; transition:border-color .2s, box-shadow .2s; }
+.inp:focus { border-color:rgba(242,101,34,0.6); box-shadow:0 0 0 3px rgba(242,101,34,0.1); }
+.inp::placeholder { color:var(--text-muted); }
+.lbl { display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:var(--text-secondary); margin-bottom:7px; }
+.fg { margin-bottom:16px; }
+.fg2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+.drop-zone { border:1.5px dashed rgba(255,255,255,0.15); border-radius:12px; padding:28px; text-align:center; cursor:pointer; transition:border-color .2s, background .2s; }
+.drop-zone:hover { border-color:rgba(242,101,34,0.4); background:rgba(242,101,34,0.04); }
+.submit-btn { width:100%; padding:14px; border-radius:12px; font-size:14px; font-family:'Syne',sans-serif; font-weight:800; color:#fff; background:linear-gradient(135deg,#FF8A50,#F26522,#D4520F); border:none; cursor:pointer; box-shadow:0 6px 24px rgba(242,101,34,0.35); transition:opacity .2s, transform .2s; margin-top:8px; }
+.submit-btn:hover { opacity:.9; transform:translateY(-1px); }
+#toast { position:fixed; bottom:28px; right:28px; background:rgba(18,14,10,0.97); border:0.5px solid rgba(34,197,94,0.3); border-radius:14px; padding:14px 18px; display:flex; align-items:center; gap:12px; z-index:9999; opacity:0; transform:translateY(10px); transition:opacity .3s,transform .3s; pointer-events:none; }
+textarea.inp { resize:vertical; }
+@media(max-width:600px){.fg2{grid-template-columns:1fr;}}
+.radio-group{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+.radio-opt{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;border:0.5px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.03);cursor:pointer;transition:background .18s,border-color .18s;font-size:13px;color:var(--text-secondary);}
+.radio-opt:hover{border-color:rgba(242,101,34,0.3);background:rgba(242,101,34,0.04);}
+.radio-opt input[type="radio"]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
