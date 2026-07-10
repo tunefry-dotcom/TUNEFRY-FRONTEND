@@ -232,11 +232,71 @@ export default function Pricing() {
   const [faqOpen, setFaqOpen] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' })
   const [submitted, setSubmitted] = useState(false)
+  const [prevDisabled, setPrevDisabled] = useState(true)
+  const [nextDisabled, setNextDisabled] = useState(false)
   const gridRef = useRef(null)
 
   const slidePlans = (dir) => {
-    gridRef.current?.scrollBy({ left: dir * 260, behavior: 'smooth' })
+    const grid = gridRef.current
+    if (!grid) return
+    const card = grid.querySelector('.plan')
+    const cardW = card ? card.offsetWidth + 12 : 272
+    grid.scrollBy({ left: dir * cardW * 2, behavior: 'smooth' })
   }
+
+  useEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+
+    let isDown = false, startX, scrollLeft
+
+    const onMouseDown = (e) => {
+      isDown = true
+      startX = e.pageX - grid.offsetLeft
+      scrollLeft = grid.scrollLeft
+      grid.style.userSelect = 'none'
+    }
+    const onMouseUp = () => { isDown = false; grid.style.userSelect = '' }
+    const onMouseMove = (e) => {
+      if (!isDown) return
+      e.preventDefault()
+      const x = e.pageX - grid.offsetLeft
+      grid.scrollLeft = scrollLeft - (x - startX) * 1.2
+    }
+
+    const updateArrows = () => {
+      setPrevDisabled(grid.scrollLeft < 10)
+      setNextDisabled(grid.scrollLeft + grid.offsetWidth >= grid.scrollWidth - 10)
+    }
+
+    grid.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('mouseup', onMouseUp)
+    grid.addEventListener('mousemove', onMouseMove)
+    grid.addEventListener('scroll', updateArrows)
+    updateArrows()
+
+    let observed = false
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting && !observed) {
+          observed = true
+          setTimeout(() => {
+            grid.scrollTo({ left: grid.scrollWidth, behavior: 'smooth' })
+          }, 800)
+          io.disconnect()
+        }
+      })
+    }, { threshold: 0.3 })
+    io.observe(grid)
+
+    return () => {
+      grid.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('mouseup', onMouseUp)
+      grid.removeEventListener('mousemove', onMouseMove)
+      grid.removeEventListener('scroll', updateArrows)
+      io.disconnect()
+    }
+  }, [])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -279,10 +339,10 @@ export default function Pricing() {
         <div className="plans-sec-head au">
           <div style={{ fontFamily: 'var(--font-d)', fontSize: 13, fontWeight: 600, color: 'var(--t3)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>All Plans</div>
           <div className="carousel-arrows">
-            <button className="carr-btn" onClick={() => slidePlans(-1)} aria-label="Previous">
+            <button className="carr-btn" onClick={() => slidePlans(-1)} disabled={prevDisabled} aria-label="Previous">
               <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            <button className="carr-btn" onClick={() => slidePlans(1)} aria-label="Next">
+            <button className="carr-btn" onClick={() => slidePlans(1)} disabled={nextDisabled} aria-label="Next">
               <svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
             </button>
           </div>
