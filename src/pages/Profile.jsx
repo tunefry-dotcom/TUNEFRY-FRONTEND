@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import '../styles/profile.css'
 
 function Toast({ toast }) {
@@ -16,6 +17,7 @@ function Toast({ toast }) {
 
 export default function Profile() {
   const navigate = useNavigate()
+  const { logout } = useAuth()
   const fileRef = useRef(null)
   const [photoSrc, setPhotoSrc] = useState(null)
   const [toast, setToast] = useState({ show: false, type: '', msg: '' })
@@ -68,8 +70,9 @@ export default function Profile() {
     setErrors(er => ({ ...er, [k]: false }))
   }
 
-  const handleLogout = () => {
-    navigate('/login')
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
   }
 
   return (

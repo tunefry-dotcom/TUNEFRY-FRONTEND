@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout'
 import PublicLayout from './components/layout/PublicLayout'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
 
 import Home from './pages/public/Home'
 import Services from './pages/public/Services'
@@ -59,6 +61,7 @@ import ForgotPassword from './pages/auth/ForgotPassword'
 export default function App() {
   return (
     <BrowserRouter>
+      <AuthProvider>
       <Routes>
         {/* Public / marketing routes */}
         <Route element={<PublicLayout />}>
@@ -88,7 +91,7 @@ export default function App() {
         <Route path="/checkout" element={<Checkout />} />
 
         {/* Dashboard routes — with right panel */}
-        <Route element={<AppLayout showRightPanel />}>
+        <Route element={<ProtectedRoute><AppLayout showRightPanel /></ProtectedRoute>}>
           <Route path="/" element={<Overview />} />
           <Route path="/releases" element={<Releases />} />
           <Route path="/connect" element={<Connect />} />
@@ -107,7 +110,7 @@ export default function App() {
         </Route>
 
         {/* Dashboard routes — no right panel (more horizontal space) */}
-        <Route element={<AppLayout showRightPanel={false} />}>
+        <Route element={<ProtectedRoute><AppLayout showRightPanel={false} /></ProtectedRoute>}>
           <Route path="/stats" element={<Stats />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/withdraw" element={<Withdrawal />} />
@@ -125,6 +128,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

@@ -1,12 +1,31 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { signup as apiSignup } from '../../lib/auth'
 
 export default function Signup() {
   const [showPass, setShowPass] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
+    setSuccess('')
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+    setLoading(true)
+    try {
+      const data = await apiSignup(form.email, form.password)
+      setSuccess(data.message || 'Account created! Please check your email to confirm.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -18,7 +37,7 @@ export default function Signup() {
 
       <div className="auth-container">
         <div className="auth-logo-wrap">
-          <Link to="/">
+          <Link to="/home">
             <img src="/tunefry-logo.png" alt="Tunefry" className="auth-logo" />
           </Link>
         </div>
@@ -29,42 +48,65 @@ export default function Signup() {
             <p className="auth-subtitle">Join thousands of artists on Tunefry</p>
           </div>
 
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <div className="input-icon-wrap">
-                <svg className="input-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <input type="text" className="form-input has-icon" placeholder="Your artist / legal name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
+          {success ? (
+            <div className="auth-success">
+              <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>Check your email</div>
+                <div style={{ fontSize: 13, opacity: 0.85 }}>{success}</div>
               </div>
             </div>
+          ) : (
+            <form className="auth-form" onSubmit={handleSubmit}>
+              {error && (
+                <div className="auth-error">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  {error}
+                </div>
+              )}
 
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
-              <div className="input-icon-wrap">
-                <svg className="input-icon" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <input type="email" className="form-input has-icon" placeholder="you@example.com" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} required />
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <div className="input-icon-wrap">
+                  <svg className="input-icon" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  <input
+                    type="email"
+                    className="form-input has-icon"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    required
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <div className="input-icon-wrap">
-                <svg className="input-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <input type={showPass ? 'text' : 'password'} className="form-input has-icon has-icon-right" placeholder="Min. 8 characters" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} required />
-                <button type="button" className="input-icon-right" onClick={() => setShowPass((v) => !v)}>
-                  {showPass
-                    ? <svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                    : <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  }
-                </button>
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <div className="input-icon-wrap">
+                  <svg className="input-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    className="form-input has-icon has-icon-right"
+                    placeholder="Min. 8 characters"
+                    value={form.password}
+                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    required
+                  />
+                  <button type="button" className="input-icon-right" onClick={() => setShowPass((v) => !v)}>
+                    {showPass
+                      ? <svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <button type="submit" className="btn btn-primary btn-full">
-              Create Account
-              <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
-          </form>
+              <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+                {loading ? 'Creating account…' : 'Create Account'}
+                {!loading && <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>}
+              </button>
+            </form>
+          )}
 
           <div className="auth-divider"><span>or</span></div>
 

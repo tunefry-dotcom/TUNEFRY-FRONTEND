@@ -1155,9 +1155,10 @@ body::after {
 .auth-divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 0.5px; background: rgba(255,255,255,0.08); }
 .auth-divider span { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.auth-error { display: none; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; background: rgba(59,130,246,0.1); border: 0.5px solid rgba(59,130,246,0.3); font-size: 12.5px; color: #60a5fa; margin-bottom: 16px; line-height: 1.5; }
-.auth-error.show { display: flex; }
+.auth-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; background: rgba(59,130,246,0.1); border: 0.5px solid rgba(59,130,246,0.3); font-size: 12.5px; color: #60a5fa; margin-bottom: 16px; line-height: 1.5; }
 .auth-error svg { width: 15px; height: 15px; stroke: #60a5fa; fill: none; stroke-width: 2; flex-shrink: 0; }
+.auth-success { display: flex; align-items: flex-start; gap: 12px; padding: 16px; border-radius: 12px; background: rgba(34,197,94,0.1); border: 0.5px solid rgba(34,197,94,0.3); color: #22C55E; margin-bottom: 8px; font-size: 13px; line-height: 1.55; }
+.auth-success svg { width: 22px; height: 22px; stroke: #22C55E; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin-top: 1px; }
 .btn-submit {
   width: 100%; padding: 14px; background: linear-gradient(135deg, #FF8A50, var(--accent), #CC5500);
   color: #fff; border: none; border-radius: 12px; font-family: var(--font-display); font-size: 15px; font-weight: 800;
