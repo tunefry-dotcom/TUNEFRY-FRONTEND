@@ -612,7 +612,7 @@ export default function NewSong() {
 
           {/* Cover Art */}
           <div>
-            <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Cover Art <span className="req">*</span></label>
+            <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Cover Art <span className="opt-tag">(optional)</span></label>
             <div className={coverDragOver ? 'drop-zone cover-art-zone drag-over' : 'drop-zone cover-art-zone'} id="coverArtZone"
               style={coverPreview ? { borderStyle: 'solid', borderColor: 'rgba(242,101,34,0.4)' } : undefined}
               onDragOver={(e) => { e.preventDefault(); setCoverDragOver(true); }}
@@ -635,7 +635,7 @@ export default function NewSong() {
           {/* Right column: Audio */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Audio File <span className="req">*</span></label>
+              <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Audio File <span className="opt-tag">(optional)</span></label>
               <div className={audioDragOver ? 'drop-zone audio-zone drag-over' : 'drop-zone audio-zone'} id="audioZone"
                 style={audioSelected ? { borderStyle: 'solid', borderColor: 'rgba(34,197,94,0.4)', background: 'rgba(34,197,94,0.05)' } : undefined}
                 onDragOver={(e) => { e.preventDefault(); setAudioDragOver(true); }}

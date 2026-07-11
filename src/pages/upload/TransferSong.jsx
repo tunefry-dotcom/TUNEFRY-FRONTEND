@@ -490,7 +490,7 @@ export default function TransferSong() {
         <div className="section-heading">Upload Files</div>
         <div className="form-grid">
           <div className="form-group">
-            <label className="form-label">Cover Art (3000×3000px) <span className="req">*</span></label>
+            <label className="form-label">Cover Art (3000×3000px) <span className="opt-tag">(optional)</span></label>
             <div className="upload-zone" id="coverArtZone">
               <input ref={coverInputRef} type="file" name="cover_art" accept="image/jpeg,image/png" onChange={(e) => handleFileSelect(e.target, setCoverArtName)} />
               <div className="upload-zone-icon">📁</div>
@@ -500,7 +500,7 @@ export default function TransferSong() {
             </div>
           </div>
           <div className="form-group">
-            <label className="form-label">Audio File (WAV/MP3/FLAC) <span className="req">*</span></label>
+            <label className="form-label">Audio File (WAV/MP3/FLAC) <span className="opt-tag">(optional)</span></label>
             <div className="upload-zone" id="audioFileZone">
               <input ref={audioInputRef} type="file" name="audio_file" accept=".wav,.mp3,.flac" onChange={(e) => handleFileSelect(e.target, setAudioFileName)} />
               <div className="upload-zone-icon">🎵</div>
