@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { setUser } = useAuth()
+  const { refreshUser } = useAuth()
   const [showPass, setShowPass] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
@@ -16,8 +16,8 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const data = await apiLogin(form.email, form.password)
-      setUser(data)
+      await apiLogin(form.email, form.password)
+      await refreshUser()
       navigate('/', { replace: true })
     } catch (err) {
       setError(err.message)

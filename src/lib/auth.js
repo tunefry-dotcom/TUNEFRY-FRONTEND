@@ -2,19 +2,19 @@ const BASE = 'https://backend1-xzx5.onrender.com'
 
 export async function getCurrentUser() {
   try {
-    const res = await fetch(`${BASE}/auth/me`, { credentials: 'include' })
-    if (res.status === 401) return null
-    if (!res.ok) return null
-    const user = await res.json()
+    const [authResult, billingResult] = await Promise.allSettled([
+      fetch(`${BASE}/auth/me`, { credentials: 'include' }),
+      fetch(`${BASE}/billing/me`, { credentials: 'include' }),
+    ])
 
-    // Enrich with plan entitlements from the billing service (server is the
-    // source of truth for what the user can access). If this call fails we fall
-    // back to no entitlements — a safe, least-privilege default that shows the
-    // upgrade prompts rather than silently unlocking gated features.
-    try {
-      const billingRes = await fetch(`${BASE}/billing/me`, { credentials: 'include' })
-      if (billingRes.ok) {
-        const billing = await billingRes.json()
+    if (authResult.status === 'rejected') return null
+    const authRes = authResult.value
+    if (authRes.status === 401 || !authRes.ok) return null
+    const user = await authRes.json()
+
+    if (billingResult.status === 'fulfilled' && billingResult.value.ok) {
+      try {
+        const billing = await billingResult.value.json()
         return {
           ...user,
           plan: billing.plan,
@@ -26,10 +26,11 @@ export async function getCurrentUser() {
           expiresAt: billing.expires_at,
           daysRemaining: billing.days_remaining,
         }
+      } catch {
+        // billing JSON parse failed — fall through to safe default
       }
-    } catch {
-      // ignore — fall through with empty entitlements
     }
+
     return { ...user, plan: 'free', planName: 'Free', entitlements: {}, upgradeHints: {}, isFree: true }
   } catch {
     return null
