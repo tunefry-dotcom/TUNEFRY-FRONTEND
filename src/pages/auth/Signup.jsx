@@ -4,7 +4,7 @@ import { signup as apiSignup } from '../../lib/auth'
 
 export default function Signup() {
   const [showPass, setShowPass] = useState(false)
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ fullName: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
@@ -13,13 +13,17 @@ export default function Signup() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    if (form.fullName.trim().length < 2) {
+      setError('Please enter your full name.')
+      return
+    }
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters.')
       return
     }
     setLoading(true)
     try {
-      const data = await apiSignup(form.email, form.password)
+      const data = await apiSignup(form.fullName.trim(), form.email, form.password)
       setSuccess(data.message || 'Account created! Please check your email to confirm.')
     } catch (err) {
       setError(err.message)
@@ -64,6 +68,21 @@ export default function Signup() {
                   {error}
                 </div>
               )}
+
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <div className="input-icon-wrap">
+                  <svg className="input-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <input
+                    type="text"
+                    className="form-input has-icon"
+                    placeholder="Your full name"
+                    value={form.fullName}
+                    onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
 
               <div className="form-group">
                 <label className="form-label">Email Address</label>

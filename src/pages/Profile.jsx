@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { getProfile, updateProfile } from '../lib/profile'
 import '../styles/profile.css'
 
 function Toast({ toast }) {
@@ -17,27 +18,49 @@ function Toast({ toast }) {
 
 export default function Profile() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const location = useLocation()
+  const { user, logout } = useAuth()
   const fileRef = useRef(null)
   const [photoSrc, setPhotoSrc] = useState(null)
   const [toast, setToast] = useState({ show: false, type: '', msg: '' })
+  const [saving, setSaving] = useState(false)
+
+  // Set when the user was sent here from an upgrade attempt with an incomplete profile.
+  const fromUpgrade = location.state?.from === 'upgrade'
+  const upgradePlan = location.state?.plan
 
   const [form, setForm] = useState({
-    fullName: 'Vasu Sharma',
-    artistName: 'Vasu Sharma',
-    email: 'vasu@example.com',
-    phone: '+91 98765 43210',
-    dob: '1999-06-15',
-    gender: 'male',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    bio: 'Independent artist from Mumbai crafting soulful beats and heartfelt lyrics. Blending Indie and Electronic vibes with a desi touch.',
-    spotify: '',
-    instagram: 'vasusharma.music',
-    youtube: '',
+    fullName: '', artistName: '', email: '', phone: '', dob: '',
+    gender: '', city: '', state: '', bio: '', spotify: '', instagram: '', youtube: '',
   })
 
   const [errors, setErrors] = useState({})
+
+  // Load the real profile on mount; seed email from the auth user.
+  useEffect(() => {
+    let active = true
+    getProfile()
+      .then((p) => {
+        if (!active) return
+        setForm((f) => ({
+          ...f,
+          fullName: p.full_name || '',
+          artistName: p.artist_name || '',
+          email: user?.email || '',
+          phone: p.phone || '',
+          dob: p.date_of_birth || '',
+          gender: p.gender || '',
+          city: p.city || '',
+          state: p.state || '',
+          bio: p.bio || '',
+          spotify: p.spotify_url || '',
+          instagram: p.instagram || '',
+          youtube: p.youtube_url || '',
+        }))
+      })
+      .catch(() => setForm((f) => ({ ...f, email: user?.email || '' })))
+    return () => { active = false }
+  }, [user?.id, user?.email])
 
   const showToast = (type, msg) => {
     setToast({ show: true, type, msg })
@@ -53,16 +76,39 @@ export default function Profile() {
     reader.readAsDataURL(file)
   }
 
-  const saveProfile = () => {
-    const required = ['fullName', 'artistName', 'phone']
+  const saveProfile = async () => {
+    const requiredMap = { fullName: 'full_name', artistName: 'artist_name', phone: 'phone', city: 'city', state: 'state', dob: 'date_of_birth' }
     const newErrors = {}
-    required.forEach(k => { if (!form[k].trim()) newErrors[k] = true })
+    Object.keys(requiredMap).forEach(k => { if (!form[k]?.trim()) newErrors[k] = true })
     setErrors(newErrors)
     if (Object.keys(newErrors).length) {
       showToast('error', 'Please fill in all required fields.')
       return
     }
-    showToast('success', 'Profile saved successfully!')
+    setSaving(true)
+    try {
+      const saved = await updateProfile({
+        full_name: form.fullName,
+        artist_name: form.artistName,
+        phone: form.phone,
+        date_of_birth: form.dob,
+        gender: form.gender,
+        city: form.city,
+        state: form.state,
+        bio: form.bio,
+        spotify_url: form.spotify,
+        instagram: form.instagram,
+        youtube_url: form.youtube,
+      })
+      showToast('success', 'Profile saved successfully!')
+      if (fromUpgrade && saved.is_complete) {
+        setTimeout(() => navigate('/plan', { state: { plan: upgradePlan } }), 1200)
+      }
+    } catch (err) {
+      showToast('error', err.message || 'Failed to save profile.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const set = (k) => (e) => {
@@ -87,6 +133,13 @@ export default function Profile() {
           <Link to="/" className="btn btn-outline" style={{ textDecoration: 'none' }}>← Overview</Link>
         </div>
       </div>
+
+      {fromUpgrade && (
+        <div className="pf-upgrade-banner">
+          <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Complete your basic details below to continue to payment.
+        </div>
+      )}
 
       <div className="profile-columns">
         {/* ── LEFT: FORM ── */}
@@ -135,7 +188,7 @@ export default function Profile() {
           <div className="pf-form-row">
             <div className="pf-form-group">
               <label className="pf-form-label">Date of Birth</label>
-              <input type="date" className="pf-form-input" value={form.dob} onChange={set('dob')} />
+              <input type="date" className={`pf-form-input${errors.dob ? ' input-error' : ''}`} value={form.dob} onChange={set('dob')} />
             </div>
             <div className="pf-form-group">
               <label className="pf-form-label">Gender</label>
@@ -153,11 +206,11 @@ export default function Profile() {
           <div className="pf-form-row">
             <div className="pf-form-group">
               <label className="pf-form-label">City</label>
-              <input type="text" className="pf-form-input" value={form.city} onChange={set('city')} placeholder="Your city" />
+              <input type="text" className={`pf-form-input${errors.city ? ' input-error' : ''}`} value={form.city} onChange={set('city')} placeholder="Your city" />
             </div>
             <div className="pf-form-group">
               <label className="pf-form-label">State</label>
-              <input type="text" className="pf-form-input" value={form.state} onChange={set('state')} placeholder="Your state" />
+              <input type="text" className={`pf-form-input${errors.state ? ' input-error' : ''}`} value={form.state} onChange={set('state')} placeholder="Your state" />
             </div>
           </div>
 
@@ -191,7 +244,9 @@ export default function Profile() {
             <input type="url" className="pf-form-input" value={form.youtube} onChange={set('youtube')} placeholder="https://youtube.com/@..." />
           </div>
 
-          <button className="btn-save" onClick={saveProfile}>Save Changes</button>
+          <button className="btn-save" onClick={saveProfile} disabled={saving}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
         </div>
 
         {/* ── RIGHT COLUMN ── */}
@@ -207,7 +262,7 @@ export default function Profile() {
               <span className="pf-info-row-label">Current Plan</span>
               <span className="pf-plan-badge">
                 <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                Single Artist
+                {user?.planName || 'Free'}
               </span>
             </div>
             <div className="pf-info-row">

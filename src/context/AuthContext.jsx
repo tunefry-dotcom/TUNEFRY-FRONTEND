@@ -19,8 +19,15 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // Re-fetch the current user (e.g. after a plan upgrade) so plan/entitlements refresh.
+  const refreshUser = async () => {
+    const fresh = await getCurrentUser()
+    setUser(fresh)
+    return fresh
+  }
+
   return (
-    <AuthContext.Provider value={{ user, setUser, logout, loading: user === undefined }}>
+    <AuthContext.Provider value={{ user, setUser, logout, refreshUser, loading: user === undefined }}>
       {children}
     </AuthContext.Provider>
   )

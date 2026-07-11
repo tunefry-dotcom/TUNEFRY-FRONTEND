@@ -53,7 +53,7 @@ export default function Overview() {
 
       {/* Page Header */}
       <div className="page-header animate-in animate-in-delay-1">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1
             className="page-title"
             style={{ background: 'linear-gradient(135deg, #fff 40%, rgba(242,101,34,0.9) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
@@ -61,9 +61,9 @@ export default function Overview() {
             Overview
           </h1>
           {/* Equalizer bars */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 24, opacity: 0.5 }} aria-hidden="true">
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 22, opacity: 0.55, flexShrink: 0 }} aria-hidden="true">
             {[{ h: 8, d: '0s' }, { h: 16, d: '0.15s' }, { h: 22, d: '0.3s' }, { h: 14, d: '0.45s' }, { h: 10, d: '0.6s' }].map((b, i) => (
-              <div key={i} style={{ width: 3, borderRadius: 2, background: 'var(--accent)', animation: 'eqBounce 0.9s ease-in-out infinite alternate', animationDelay: b.d, height: b.h }} />
+              <div key={i} style={{ width: 3, borderRadius: 2, background: 'var(--accent)', animation: 'eqBounce 0.9s ease-in-out infinite alternate', animationDelay: b.d, height: b.h, transformOrigin: 'bottom' }} />
             ))}
           </div>
         </div>

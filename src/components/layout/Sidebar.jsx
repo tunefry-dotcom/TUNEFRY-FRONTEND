@@ -55,6 +55,13 @@ const NAV_ITEMS = [
       <svg viewBox="0 0 24 24"><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/><polyline points="16 3 21 3 21 8"/><line x1="21" y1="3" x2="12" y2="12"/></svg>
     ),
   },
+  {
+    path: '/plan',
+    label: 'Your Plan',
+    icon: (
+      <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    ),
+  },
 ]
 
 export default function Sidebar({ isOpen, onClose }) {

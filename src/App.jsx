@@ -3,6 +3,8 @@ import AppLayout from './components/layout/AppLayout'
 import PublicLayout from './components/layout/PublicLayout'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import PlanGate from './components/PlanGate'
+import { FEATURES } from './lib/billing'
 import ScrollToTop from './components/ScrollToTop'
 
 import Home from './pages/public/Home'
@@ -36,7 +38,7 @@ import PitchSong from './pages/PitchSong'
 import InstaLink from './pages/InstaLink'
 import ClaimRemoval from './pages/ClaimRemoval'
 import ProfileMismatch from './pages/ProfileMismatch'
-import CurrentPlan from './pages/CurrentPlan'
+import YourPlan from './pages/YourPlan'
 
 import Daily from './pages/daily/Daily'
 import AiBlog from './pages/daily/AiBlog'
@@ -99,10 +101,10 @@ export default function App() {
           <Route path="/connect" element={<Connect />} />
           <Route path="/refer" element={<ReferEarn />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/instalink" element={<InstaLink />} />
+          <Route path="/instalink" element={<PlanGate feature={FEATURES.INSTAGRAM_LINKING} title="Instagram linking"><InstaLink /></PlanGate>} />
           <Route path="/claim-removal" element={<ClaimRemoval />} />
           <Route path="/profile-mismatch" element={<ProfileMismatch />} />
-          <Route path="/plan" element={<CurrentPlan />} />
+          <Route path="/plan" element={<YourPlan />} />
           <Route path="/daily" element={<Daily />} />
           <Route path="/help" element={<Help />} />
           <Route path="/help/account" element={<HelpAccount />} />
@@ -119,12 +121,12 @@ export default function App() {
           <Route path="/daily/ai-blog" element={<AiBlog />} />
           <Route path="/upload/song" element={<SongUpload />} />
           <Route path="/upload/album" element={<AlbumUpload />} />
-          <Route path="/upload/new-song" element={<NewSong />} />
-          <Route path="/upload/new-album" element={<NewAlbum />} />
-          <Route path="/upload/transfer-song" element={<TransferSong />} />
-          <Route path="/upload/transfer-album" element={<TransferAlbum />} />
+          <Route path="/upload/new-song" element={<PlanGate feature={FEATURES.RELEASE_SINGLE} title="Releasing a single"><NewSong /></PlanGate>} />
+          <Route path="/upload/new-album" element={<PlanGate feature={FEATURES.RELEASE_ALBUM} title="Album releases"><NewAlbum /></PlanGate>} />
+          <Route path="/upload/transfer-song" element={<PlanGate feature={FEATURES.TRANSFER_SINGLE} title="Song transfer & migration"><TransferSong /></PlanGate>} />
+          <Route path="/upload/transfer-album" element={<PlanGate feature={FEATURES.TRANSFER_ALBUM} title="Album transfer & migration"><TransferAlbum /></PlanGate>} />
           <Route path="/submission-rules" element={<SubmissionRules />} />
-          <Route path="/pitch-song" element={<PitchSong />} />
+          <Route path="/pitch-song" element={<PlanGate feature={FEATURES.PLAYLIST_PITCHING} title="Playlist & radio pitching"><PitchSong /></PlanGate>} />
         </Route>
 
         {/* Fallback */}

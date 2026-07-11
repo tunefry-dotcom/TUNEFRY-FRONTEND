@@ -1,4 +1,19 @@
 /* Profile Page */
+
+.pf-upgrade-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-lg);
+  background: rgba(242, 101, 34, 0.1);
+  border: 0.5px solid rgba(242, 101, 34, 0.35);
+  color: var(--accent-light, #FF8A50);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
 .profile-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -87,7 +102,7 @@
 .pf-form-input::placeholder { color: var(--text-muted, rgba(255,255,255,0.25)); }
 select.pf-form-input option { background: #1a1610; }
 textarea.pf-form-input { resize: vertical; }
-.pf-form-input.input-error { border-color: #3B82F6 !important; }
+.pf-form-input.input-error { border-color: #EF4444 !important; }
 
 .pf-divider { height: 1px; background: var(--border-subtle); margin: 24px 0; }
 .pf-section-heading {
@@ -117,7 +132,8 @@ textarea.pf-form-input { resize: vertical; }
   box-shadow: 0 4px 20px rgba(242,101,34,0.35);
   transition: all 0.25s ease;
 }
-.btn-save:hover { box-shadow: 0 6px 28px rgba(242,101,34,0.5); transform: translateY(-1px); }
+.btn-save:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(242,101,34,0.5); transform: translateY(-1px); }
+.btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
 /* Right column */
 .pf-right-col { display: flex; flex-direction: column; gap: 20px; }
@@ -228,5 +244,5 @@ textarea.pf-form-input { resize: vertical; }
 }
 .pf-toast.show { transform: translateY(0); opacity: 1; }
 .pf-toast.success { background: rgba(34,197,94,0.15); border: 0.5px solid rgba(34,197,94,0.35); color: #22C55E; }
-.pf-toast.error { background: rgba(59,130,246,0.15); border: 0.5px solid rgba(59,130,246,0.35); color: #3B82F6; }
+.pf-toast.error { background: rgba(239,68,68,0.15); border: 0.5px solid rgba(239,68,68,0.35); color: #FCA5A5; }
 .pf-toast svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
