@@ -2,6 +2,8 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import '../../styles/transfer-song.css'
 
+const BASE = 'https://backend1-xzx5.onrender.com'
+
 const SUB_CATEGORIES = {
   'Hip-Hop/Rap': ['Alternative Hip-Hop', 'Conscious Hip-Hop', 'Country Rap', 'Emo Rap', 'Jazz Rap', 'Hip-Hop', 'Pop Rap', 'Trap'],
   'Devotional': ['Aarti', 'Bhajan', 'Carol', 'Chalisa', 'Chant', 'Geet', 'Gospel', 'Gurbani', 'Kirtan', 'Mantra', 'Paath', 'Islamic'],
@@ -178,7 +180,8 @@ export default function TransferSong() {
      *   2xx -> { ok: true, transfer_id: string }
      *   4xx/5xx -> { message: string }
      * ================================================================ */
-    fetch('/api/release/song/transfer', {
+    fd.append('submission_type', 'transfer_song')
+    fetch(`${BASE}/submissions/song`, {
       method: 'POST',
       body: fd,
       credentials: 'include',

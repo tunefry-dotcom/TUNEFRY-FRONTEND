@@ -2,6 +2,8 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import '../styles/insta-link.css'
 
+const BASE = 'https://backend1-xzx5.onrender.com'
+
 export default function InstaLink() {
   const [instagramUrl, setInstagramUrl] = useState('')
   const [facebookUrl, setFacebookUrl] = useState('')
@@ -52,16 +54,32 @@ export default function InstaLink() {
     setInstaBorder('')
     setSongBorder('')
 
-    setTimeout(function () {
-      showToast('success', 'Link request submitted! Processing may take up to 24 hours.')
-      setInstagramUrl('')
-      setFacebookUrl('')
-      setSongName('')
-      setChkInstagram(false)
-      setChkFacebook(false)
-      setBadgeConnected(true)
-      setBadgeText('Pending Verification')
-    }, 800)
+    const fd = new FormData()
+    fd.append('instagram_url', instaUrl)
+    fd.append('facebook_url', facebookUrl.trim())
+    fd.append('song_name', song)
+    fd.append('link_instagram', chkInsta ? 'yes' : 'no')
+    fd.append('link_facebook', chkFb ? 'yes' : 'no')
+
+    fetch(`${BASE}/submissions/insta-link`, {
+      method: 'POST',
+      body: fd,
+      credentials: 'include',
+    })
+      .then((res) => (res.ok ? res.json() : res.json().then((e) => { throw e })))
+      .then(() => {
+        showToast('success', 'Link request submitted! Processing may take up to 24 hours.')
+        setInstagramUrl('')
+        setFacebookUrl('')
+        setSongName('')
+        setChkInstagram(false)
+        setChkFacebook(false)
+        setBadgeConnected(true)
+        setBadgeText('Pending Verification')
+      })
+      .catch((err) => {
+        showToast('error', err && err.detail ? err.detail : 'Submission failed. Please try again.')
+      })
   }
 
   return (

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/profile-mismatch.css';
 
+const BASE = 'https://backend1-xzx5.onrender.com'
+
 export default function ProfileMismatch() {
   const [profileAction, setProfileAction] = useState('');
   const [errText, setErrText] = useState('Please fill in all required fields.');
@@ -44,19 +46,36 @@ export default function ProfileMismatch() {
     setErrVisible(false);
     setSubmitting(true);
 
-    setTimeout(function () {
-      setSubmitting(false);
-      setToastVisible(true);
-      setTimeout(function () {
-        setToastVisible(false);
-      }, 4000);
-      setSectionName('');
-      setSectionLink('');
-      setPlatform('');
-      setProfileAction('');
-      setNewProfileName('');
-      setExistingProfileLink('');
-    }, 800);
+    const fd = new FormData();
+    fd.append('section_name', sectionName.trim());
+    fd.append('section_link', sectionLink.trim());
+    fd.append('platform', platform);
+    fd.append('profile_action', profileAction);
+    fd.append('new_profile_name', newProfileName.trim());
+    fd.append('existing_profile_link', existingProfileLink.trim());
+
+    fetch(`${BASE}/submissions/profile-mismatch`, {
+      method: 'POST',
+      body: fd,
+      credentials: 'include',
+    })
+      .then((res) => (res.ok ? res.json() : res.json().then((e) => { throw e; })))
+      .then(() => {
+        setSubmitting(false);
+        setToastVisible(true);
+        setTimeout(() => setToastVisible(false), 4000);
+        setSectionName('');
+        setSectionLink('');
+        setPlatform('');
+        setProfileAction('');
+        setNewProfileName('');
+        setExistingProfileLink('');
+      })
+      .catch((err) => {
+        setSubmitting(false);
+        setErrText(err && err.detail ? err.detail : 'Submission failed. Please try again.');
+        setErrVisible(true);
+      });
   };
 
   return (

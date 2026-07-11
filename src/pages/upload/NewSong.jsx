@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import '../../styles/new-song.css';
 
+const BASE = 'https://backend1-xzx5.onrender.com'
+
 const LANGUAGES = [
   { value: '24', text: 'Hindi' },
   { value: '1', text: 'English' },
@@ -303,13 +305,9 @@ export default function NewSong() {
       fd.append('cover_art', coverInputRef.current.files[0]);
     if (audioInputRef.current && audioInputRef.current.files[0])
       fd.append('audio_file', audioInputRef.current.files[0]);
+    fd.append('submission_type', 'new_song');
 
-    /* ===== BACKEND CONTRACT =========================================
-     * POST /api/release/song/new
-     * Content-Type: multipart/form-data  (set automatically by browser)
-     * Auth: session cookie (credentials: 'include')
-     * ================================================================ */
-    fetch('/api/release/song/new', {
+    fetch(`${BASE}/submissions/song`, {
       method: 'POST',
       body: fd,
       credentials: 'include',

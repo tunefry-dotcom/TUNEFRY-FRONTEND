@@ -60,6 +60,7 @@ import HelpTechnical from './pages/help/HelpTechnical'
 import Login from './pages/auth/Login'
 import Signup from './pages/auth/Signup'
 import ForgotPassword from './pages/auth/ForgotPassword'
+import SecretPanel from './pages/admin/SecretPanel'
 
 export default function App() {
   return (
@@ -128,6 +129,9 @@ export default function App() {
           <Route path="/submission-rules" element={<SubmissionRules />} />
           <Route path="/pitch-song" element={<PlanGate feature={FEATURES.PLAYLIST_PITCHING} title="Playlist & radio pitching"><PitchSong /></PlanGate>} />
         </Route>
+
+        {/* Admin panel — standalone, secret-gated, no user auth required */}
+        <Route path="/secret-panel" element={<SecretPanel />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/home" replace />} />

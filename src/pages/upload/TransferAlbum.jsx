@@ -2,6 +2,8 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import '../../styles/transfer-album.css';
 
+const BASE = 'https://backend1-xzx5.onrender.com'
+
 const GENRE_OPTIONS = [
   'Hip-Hop / Rap', 'Devotional', 'Pop', 'Indie',
   'Film', 'Jazz', 'Ambient / Instrumental',
@@ -263,7 +265,8 @@ export default function TransferAlbum() {
      *   2xx -> { ok: true, transfer_id: string }
      *   4xx/5xx -> { message: string }
      * ================================================================ */
-    fetch('/api/release/album/transfer', {
+    fd.append('submission_type', 'transfer_album')
+    fetch(`${BASE}/submissions/album`, {
       method: 'POST',
       body: fd,
       credentials: 'include',

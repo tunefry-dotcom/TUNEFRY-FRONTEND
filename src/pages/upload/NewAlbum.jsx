@@ -2,6 +2,8 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import '../../styles/new-album.css'
 
+const BASE = 'https://backend1-xzx5.onrender.com'
+
 const GENRES = [
   'Hip-Hop / Rap', 'Devotional', 'Pop', 'Indie',
   'Film', 'Jazz', 'Ambient / Instrumental',
@@ -186,7 +188,8 @@ export default function NewAlbum() {
      *   cover_art       (image/*, required)
      *   audio_<sid>     (.wav/.flac/.mp3, one per song)
      * ================================================================ */
-    fetch('/api/release/album/new', {
+    fd.append('submission_type', 'new_album')
+    fetch(`${BASE}/submissions/album`, {
       method: 'POST',
       body: fd,
       credentials: 'include',

@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import '../styles/claim-removal.css'
 
+const BASE = 'https://backend1-xzx5.onrender.com'
+
 export default function ClaimRemoval() {
   const [songName, setSongName] = useState('')
   const [artistName, setArtistName] = useState('')
@@ -97,7 +99,7 @@ export default function ClaimRemoval() {
      *   2xx -> { ok: true, ticket_id: string }
      *   4xx/5xx -> { message: string }
      * ================================================================ */
-    fetch('/api/support/claim-removal', {
+    fetch(`${BASE}/submissions/claim-removal`, {
       method: 'POST',
       body: fd,
       credentials: 'include'
