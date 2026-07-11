@@ -3,20 +3,26 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import '../styles/upgrade-banner.css'
 
-// Persistent-per-session notification nudging free-plan artists to upgrade.
-// Shows only while the user is on the Free plan; dismissible for the session.
+const TTL_MS = 3 * 24 * 60 * 60 * 1000 // 3 days
+
+function isDismissed() {
+  try {
+    const ts = localStorage.getItem('tf_upgrade_banner_ts')
+    return Boolean(ts && Date.now() - Number(ts) < TTL_MS)
+  } catch {
+    return false
+  }
+}
+
 export default function UpgradeBanner() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [dismissed, setDismissed] = useState(
-    () => sessionStorage.getItem('tf_upgrade_banner_dismissed') === '1'
-  )
+  const [dismissed, setDismissed] = useState(() => isDismissed())
 
-  // Only nudge free-plan users. Paid users never see it.
   if (!user || !user.isFree || dismissed) return null
 
   const dismiss = () => {
-    sessionStorage.setItem('tf_upgrade_banner_dismissed', '1')
+    try { localStorage.setItem('tf_upgrade_banner_ts', String(Date.now())) } catch { /* private browsing */ }
     setDismissed(true)
   }
 
@@ -32,7 +38,7 @@ export default function UpgradeBanner() {
         </div>
       </div>
       <div className="upgrade-banner-actions">
-        <button className="upgrade-banner-cta" onClick={() => navigate('/pricing')}>
+        <button className="upgrade-banner-cta" onClick={() => navigate('/plan')}>
           Upgrade
         </button>
         <button className="upgrade-banner-close" onClick={dismiss} aria-label="Dismiss">
