@@ -3,6 +3,7 @@ import AppLayout from './components/layout/AppLayout'
 import PublicLayout from './components/layout/PublicLayout'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import ScrollToTop from './components/ScrollToTop'
 
 import Home from './pages/public/Home'
 import Services from './pages/public/Services'
@@ -62,6 +63,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+      <ScrollToTop />
       <Routes>
         {/* Public / marketing routes */}
         <Route element={<PublicLayout />}>
