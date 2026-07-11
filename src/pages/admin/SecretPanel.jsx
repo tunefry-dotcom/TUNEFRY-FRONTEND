@@ -172,7 +172,7 @@ function UsersView({ secret, onSessionExpired }) {
     try {
       const res = await fetch(`${BASE}/admin/users`, { headers: { 'X-Admin-Secret': secret } })
       if (res.status === 403) { onSessionExpired(); return }
-      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      if (!res.ok) { let msg = `${res.status}`; try { const b = await res.json(); msg = b.detail || JSON.stringify(b) } catch {} throw new Error(msg) }
       const data = await res.json()
       setUsers(data.users); setTotal(data.total)
     } catch (e) { setError(e.message) }
@@ -356,7 +356,7 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
         headers: { 'X-Admin-Secret': secret },
       })
       if (res.status === 403) { onSessionExpired(); return }
-      if (!res.ok) throw new Error(`Server error ${res.status}`)
+      if (!res.ok) { let msg = `${res.status}`; try { const b = await res.json(); msg = b.detail || JSON.stringify(b) } catch {} throw new Error(msg) }
       const data = await res.json()
       setSubmissions(data.submissions)
       setTotal(data.total)
