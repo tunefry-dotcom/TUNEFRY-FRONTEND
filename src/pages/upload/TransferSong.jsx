@@ -1,8 +1,12 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import '../../styles/transfer-song.css'
+import { useAuth } from '../../context/AuthContext'
 
 const BASE = 'https://backend1-xzx5.onrender.com'
+
+const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: Infinity }
+const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const SUB_CATEGORIES = {
   'Hip-Hop/Rap': ['Alternative Hip-Hop', 'Conscious Hip-Hop', 'Country Rap', 'Emo Rap', 'Jazz Rap', 'Hip-Hop', 'Pop Rap', 'Trap'],
@@ -13,6 +17,9 @@ const SUB_CATEGORIES = {
 }
 
 export default function TransferSong() {
+  const { user } = useAuth()
+  const maxArtists = planMaxArtists(user?.plan)
+
   // Simple text/select field values (mirrors the original DOM element ids)
   const [upcCode, setUpcCode] = useState('')
   const [isrcCode, setIsrcCode] = useState('')
@@ -262,10 +269,17 @@ export default function TransferSong() {
             <div className="section-eyebrow">Artists</div>
             <div className="section-heading" style={{ marginBottom: 0 }}>Main Artists <span className="req">*</span></div>
           </div>
-          <button type="button" className="add-artist-btn" onClick={() => addArtist(false)}>
+          <button type="button" className="add-artist-btn" onClick={() => addArtist(false)}
+            disabled={mainArtists.length >= maxArtists}
+            title={mainArtists.length >= maxArtists ? `Your plan allows ${maxArtists} main artist(s). Upgrade to add more.` : undefined}>
             <svg viewBox="0 0 24 24" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Artist
           </button>
+          {mainArtists.length >= maxArtists && maxArtists < Infinity && (
+            <p style={{ fontSize: '12px', color: '#f59e0b', margin: '4px 0 0' }}>
+              Plan limit: {maxArtists} main artist{maxArtists > 1 ? 's' : ''}. <Link to="/plan" style={{ color: '#f59e0b' }}>Upgrade</Link> to add more.
+            </p>
+          )}
         </div>
         <div id="mainArtists">
           {mainArtists.map((artist, i) => (

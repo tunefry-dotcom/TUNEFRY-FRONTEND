@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import '../../styles/new-song.css';
+import { useAuth } from '../../context/AuthContext';
 
 const BASE = 'https://backend1-xzx5.onrender.com'
+
+const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: Infinity }
+const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const LANGUAGES = [
   { value: '24', text: 'Hindi' },
@@ -110,6 +114,9 @@ function isCustomLabelAllowed() {
 }
 
 export default function NewSong() {
+  const { user } = useAuth()
+  const maxArtists = planMaxArtists(user?.plan)
+
   // Toggles
   const [ytBeat, setYtBeat] = useState(null); // null | true | false
   const [ytCid, setYtCid] = useState(null);
@@ -393,7 +400,9 @@ export default function NewSong() {
             <div className="section-eyebrow">Step 02</div>
             <div className="section-heading" style={{ marginBottom: 0 }}>Main Artists</div>
           </div>
-          <button className="add-artist-btn" onClick={addMainArtist}>
+          <button className="add-artist-btn" onClick={addMainArtist}
+            disabled={mainArtists.length >= maxArtists}
+            title={mainArtists.length >= maxArtists ? `Your plan allows ${maxArtists} main artist(s). Upgrade to add more.` : undefined}>
             <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Add Artist
           </button>
@@ -424,6 +433,11 @@ export default function NewSong() {
           <div id="mainArtistEmpty" style={{ padding: '20px', textAlign: 'center', border: '1.5px dashed rgba(255,255,255,0.08)', borderRadius: '14px', color: 'var(--text-muted)', fontSize: '13px' }}>
             Click <strong style={{ color: 'var(--accent)' }}>Add Artist</strong> to add the main artist for this release
           </div>
+        )}
+        {mainArtists.length >= maxArtists && maxArtists < Infinity && (
+          <p style={{ fontSize: '12px', color: '#f59e0b', margin: '8px 0 0', textAlign: 'right' }}>
+            Plan limit reached ({maxArtists} main artist{maxArtists > 1 ? 's' : ''}). <Link to="/plan" style={{ color: '#f59e0b' }}>Upgrade</Link> to add more.
+          </p>
         )}
       </div>
 
