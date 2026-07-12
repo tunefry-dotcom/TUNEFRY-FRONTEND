@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
-const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: Infinity }
+const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: 5 }
 const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const LANGUAGES = [
@@ -434,7 +434,7 @@ export default function NewSong() {
             Click <strong style={{ color: 'var(--accent)' }}>Add Artist</strong> to add the main artist for this release
           </div>
         )}
-        {mainArtists.length >= maxArtists && maxArtists < Infinity && (
+        {mainArtists.length >= maxArtists && (
           <p style={{ fontSize: '12px', color: '#f59e0b', margin: '8px 0 0', textAlign: 'right' }}>
             Plan limit reached ({maxArtists} main artist{maxArtists > 1 ? 's' : ''}). <Link to="/plan" style={{ color: '#f59e0b' }}>Upgrade</Link> to add more.
           </p>

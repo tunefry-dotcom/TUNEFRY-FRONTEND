@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
-const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: Infinity }
+const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: 5 }
 const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const GENRE_OPTIONS = [
@@ -676,10 +676,12 @@ export default function TransferAlbum() {
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
               Add Main Artist
-              {song.mainArtists.length >= maxArtists && maxArtists < Infinity && (
-                <span style={{ fontSize: '11px', color: '#f59e0b', marginLeft: 6 }}>({maxArtists} max)</span>
-              )}
             </button>
+            {song.mainArtists.length >= maxArtists && (
+              <span style={{ fontSize: '11px', color: '#f59e0b', marginLeft: 8 }}>
+                Plan limit ({maxArtists}). <Link to="/plan" style={{ color: '#f59e0b' }}>Upgrade</Link>
+              </span>
+            )}
           </div>
           <div id={song.id + '-mainArtists'}>
             {song.mainArtists.map((a, idx) => renderArtist(song, 'main', a, idx + 1))}

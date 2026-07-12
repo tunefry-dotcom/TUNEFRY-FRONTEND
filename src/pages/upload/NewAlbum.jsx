@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
-const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: Infinity }
+const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: 5 }
 const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const GENRES = [
@@ -478,7 +478,7 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
             title={song.mainArtists.length >= maxArtists ? `Your plan allows ${maxArtists} main artist(s). Upgrade to add more.` : undefined}>
             <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Main Artist
           </button>
-          {song.mainArtists.length >= maxArtists && maxArtists < Infinity && (
+          {song.mainArtists.length >= maxArtists && (
             <span style={{ fontSize: '11px', color: '#f59e0b', marginLeft: 8 }}>Plan limit ({maxArtists})</span>
           )}
         </div>
