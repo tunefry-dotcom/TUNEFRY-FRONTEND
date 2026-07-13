@@ -144,11 +144,12 @@ export default function NewAlbum() {
   // Prefill first song's first main artist from profile on mount; store for use when adding more artists
   useEffect(() => {
     getProfile().then((p) => {
-      setProfileData(p)
-      if (p.artist_name || p.spotify_url || p.apple_music_url) {
+      const merged = { ...p, artist_name: p.artist_name || user?.artist_name || '' }
+      setProfileData(merged)
+      if (merged.artist_name || merged.spotify_url || merged.apple_music_url) {
         setSongs((prev) => prev.map((s, idx) => idx === 0 ? {
           ...s,
-          mainArtists: [{ key: Date.now(), name: p.artist_name || '', spotify: p.spotify_url || '', apple: p.apple_music_url || '', instagram: '' }],
+          mainArtists: [{ key: Date.now(), name: merged.artist_name || '', spotify: merged.spotify_url || '', apple: merged.apple_music_url || '', instagram: '' }],
         } : s))
       }
     }).catch(() => {})

@@ -186,15 +186,16 @@ export default function NewSong() {
   // Prefill first main artist from profile on mount; store for use when adding more artists
   useEffect(() => {
     getProfile().then((p) => {
-      setProfileData(p)
-      if (p.artist_name || p.spotify_url || p.apple_music_url) {
+      const merged = { ...p, artist_name: p.artist_name || user?.artist_name || '' }
+      setProfileData(merged)
+      if (merged.artist_name || merged.spotify_url || merged.apple_music_url) {
         mainCounter.current += 1
         const n = mainCounter.current
         setMainArtists([{
           key: `main-artist-${n}`, num: n,
-          name: p.artist_name || '',
-          spotify: p.spotify_url || '',
-          apple_music: p.apple_music_url || '',
+          name: merged.artist_name || '',
+          spotify: merged.spotify_url || '',
+          apple_music: merged.apple_music_url || '',
           instagram: '',
         }])
       }
