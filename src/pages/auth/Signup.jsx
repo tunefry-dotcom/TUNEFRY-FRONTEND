@@ -67,12 +67,6 @@ export default function Signup() {
             </div>
           ) : (
             <form className="auth-form" onSubmit={handleSubmit}>
-              {error && (
-                <div style={{ color: '#f87171', fontSize: '13px', fontWeight: 500, padding: '10px 14px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  {error}
-                </div>
-              )}
 
               <div className="form-group">
                 <label className="form-label">Full Name</label>
@@ -140,10 +134,10 @@ export default function Signup() {
                 </div>
               </div>
 
-              {matchError && (
+              {(error || matchError) && (
                 <div style={{ color: '#f87171', fontSize: '13px', fontWeight: 500, padding: '10px 14px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  {matchError}
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  {error || matchError}
                 </div>
               )}
 
