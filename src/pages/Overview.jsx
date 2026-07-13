@@ -48,7 +48,7 @@ export default function Overview() {
     window.history.replaceState({}, document.title)
   }, [location.state?.successMsg])
 
-  useEffect(() => {
+  const checkSubmissions = () => {
     if (!user?.email) return
     fetch(`${BASE}/submissions/my`, { credentials: 'include' })
       .then((r) => r.ok ? r.json() : { submissions: [] })
@@ -83,7 +83,14 @@ export default function Overview() {
         }
       })
       .catch(() => {})
-  }, [user?.id, user?.email])
+  }
+
+  // Run on mount + re-run when tab regains focus (catches admin approvals that happen while user is on page)
+  useEffect(() => {
+    checkSubmissions()
+    window.addEventListener('focus', checkSubmissions)
+    return () => window.removeEventListener('focus', checkSubmissions)
+  }, [user?.id, user?.email]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const dismissPitch = (id) => {
     const uid = user?.id || ''
@@ -261,7 +268,7 @@ export default function Overview() {
                 </div>
                 <button
                   className="pitch-cta"
-                  onClick={() => { dismissPitch(s.id); navigate('/pitch-song', { state: { songTitle: title, submissionId: s.id } }) }}
+                  onClick={() => navigate('/pitch-song', { state: { songTitle: title, submissionId: s.id } })}
                 >
                   Apply Now
                 </button>
