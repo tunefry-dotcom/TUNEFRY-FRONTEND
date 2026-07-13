@@ -1,14 +1,10 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
-const BALANCE = 2641
+const BALANCE = 0
 const MIN = 1500
 
-const TRANSACTIONS = [
-  { id: 1, type: 'bank', title: 'Bank Transfer — HDFC Bank', date: '12 Apr 2026', amount: '₹1,800.00', status: 'Paid', statusClass: 'success' },
-  { id: 2, type: 'upi', title: 'UPI — vasusharma@okaxis', date: '28 Mar 2026', amount: '₹2,100.00', status: 'Paid', statusClass: 'success' },
-  { id: 3, type: 'bank', title: 'Bank Transfer — SBI', date: '5 Mar 2026', amount: '₹1,500.00', status: 'Processing', statusClass: 'processing' },
-]
+const TRANSACTIONS = []
 
 function Toast({ toast }) {
   if (!toast) return null
@@ -79,7 +75,7 @@ export default function Withdrawal() {
       <div className="glass-card animate-in animate-in-delay-2" style={{ padding: 32, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', borderColor: 'rgba(242,101,34,0.2)', background: 'linear-gradient(165deg, rgba(242,101,34,0.08) 0%, rgba(255,255,255,0.03) 60%)' }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', marginBottom: 10 }}>Available Balance</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 52, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 10vw, 52px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
             <span style={{ fontSize: 28, fontWeight: 600, color: 'var(--accent)', marginRight: 4 }}>₹</span>2,641.00
           </div>
           <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -104,7 +100,7 @@ export default function Withdrawal() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 0, background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 12, padding: 4, marginBottom: 28, width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: 0, background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 12, padding: 4, marginBottom: 28 }}>
           {[
             { key: 'bank', label: 'Bank Transfer', icon: <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'currentColor', fill: 'none', strokeWidth: 1.8 }}><line x1="3" y1="22" x2="21" y2="22"/><rect x="6" y="2" width="12" height="20" rx="2"/></svg> },
             { key: 'upi', label: 'UPI', badge: '14 Working Days', icon: <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: 'currentColor', fill: 'none', strokeWidth: 1.8 }}><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M8 10l2 2 4-4"/></svg> },
@@ -112,11 +108,11 @@ export default function Withdrawal() {
             <div
               key={t.key}
               onClick={() => setTab(t.key)}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 22px', borderRadius: 9, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', border: '0.5px solid transparent', background: tab === t.key ? 'linear-gradient(145deg, rgba(242,101,34,0.18) 0%, rgba(242,101,34,0.08) 100%)' : 'transparent', borderColor: tab === t.key ? 'rgba(242,101,34,0.3)' : 'transparent', color: tab === t.key ? 'var(--accent)' : 'var(--text-secondary)' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', flex: 1, borderRadius: 9, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', border: '0.5px solid transparent', background: tab === t.key ? 'linear-gradient(145deg, rgba(242,101,34,0.18) 0%, rgba(242,101,34,0.08) 100%)' : 'transparent', borderColor: tab === t.key ? 'rgba(242,101,34,0.3)' : 'transparent', color: tab === t.key ? 'var(--accent)' : 'var(--text-secondary)' }}
             >
               {t.icon}
               {t.label}
-              {t.badge && <span style={{ padding: '1px 7px', background: 'rgba(34,197,94,0.12)', border: '0.5px solid rgba(34,197,94,0.25)', borderRadius: 100, fontSize: 10, fontWeight: 700, color: '#22C55E', letterSpacing: '0.04em' }}>{t.badge}</span>}
+              {t.badge && <span style={{ padding: '1px 7px', background: 'rgba(34,197,94,0.12)', border: '0.5px solid rgba(34,197,94,0.25)', borderRadius: 100, fontSize: 10, fontWeight: 700, color: '#22C55E', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{t.badge}</span>}
             </div>
           ))}
         </div>

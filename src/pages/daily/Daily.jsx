@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import ComingSoon from '../../components/ComingSoon'
 
 const STATS = [
   { label: 'Articles Published', value: '24' },
@@ -8,6 +9,7 @@ const STATS = [
 
 export default function Daily() {
   return (
+    <ComingSoon>
     <>
       <div className="page-label animate-in">
         <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
@@ -21,7 +23,7 @@ export default function Daily() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+      <div className="daily-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
         {STATS.map((s, i) => (
           <div key={s.label} className={`glass-card animate-in animate-in-delay-${i + 2}`} style={{ padding: '20px 24px' }}>
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{s.label}</div>
@@ -54,5 +56,6 @@ export default function Daily() {
         </div>
       </div>
     </>
+    </ComingSoon>
   )
 }

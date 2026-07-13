@@ -1,3 +1,5 @@
+import ComingSoon from '../components/ComingSoon'
+
 const PLATFORMS = [
   { name: 'Spotify', color: '#1DB954', bg: 'rgba(29,185,84,0.1)', border: 'rgba(29,185,84,0.25)', icon: '🎵', connected: true, followers: '12,400' },
   { name: 'Apple Music', color: '#FC3C44', bg: 'rgba(252,60,68,0.1)', border: 'rgba(252,60,68,0.25)', icon: '🍎', connected: true, followers: '8,200' },
@@ -9,6 +11,7 @@ const PLATFORMS = [
 
 export default function Connect() {
   return (
+    <ComingSoon>
     <>
       <div className="page-label animate-in">
         <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -43,5 +46,6 @@ export default function Connect() {
         ))}
       </div>
     </>
+    </ComingSoon>
   )
 }

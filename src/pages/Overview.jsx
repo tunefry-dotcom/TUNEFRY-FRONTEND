@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+
+const BASE = 'https://backend1-xzx5.onrender.com'
 
 const VELOCITY_BARS = [
   { label: 'Spotify', height: 100, hot: false, delay: '0s' },
@@ -11,11 +13,6 @@ const VELOCITY_BARS = [
   { label: 'Deezer', height: 110, hot: false, delay: '0.4s' },
   { label: 'Pandora', height: 90, hot: false, delay: '0.48s' },
   { label: 'Other', height: 60, hot: false, delay: '0.56s' },
-]
-
-const PITCH_SONGS = [
-  { name: 'Midnight Echoes', release: '15 days away' },
-  { name: 'Neon Dreams', release: '18 days away' },
 ]
 
 const MOBILE_ACTIONS = [
@@ -36,8 +33,54 @@ export default function Overview() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [ugcOn, setUgcOn] = useState(false)
+  const [pitchSongs, setPitchSongs] = useState([])
+  const [toasts, setToasts] = useState([])
 
-  const streamValue = ugcOn ? '230,797' : '214,532'
+  useEffect(() => {
+    if (!user?.email) return
+    fetch(`${BASE}/submissions/my`, { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : { submissions: [] })
+      .then(({ submissions = [] }) => {
+        const uid = user.id || ''
+        const pitched = JSON.parse(localStorage.getItem(`tf_pitched_${uid}`) || '[]')
+        const seen   = JSON.parse(localStorage.getItem(`tf_seen_approvals_${uid}`) || '[]')
+
+        // Pitch section: approved song submissions not yet pitched
+        const eligible = submissions.filter((s) =>
+          s.status === 'approved' &&
+          ['new_song','transfer_song'].includes(s.submission_type) &&
+          !pitched.includes(s.id)
+        ).slice(0, 3)
+        setPitchSongs(eligible)
+
+        // Approval notifications: approved submissions not yet seen
+        const newApprovals = submissions.filter((s) =>
+          s.status === 'approved' && !seen.includes(s.id)
+        )
+        if (newApprovals.length > 0) {
+          localStorage.setItem(`tf_seen_approvals_${uid}`, JSON.stringify([
+            ...seen, ...newApprovals.map((s) => s.id),
+          ]))
+          newApprovals.forEach((s, i) => {
+            const title = s.data?.song_title || s.data?.album_name || 'your track'
+            setTimeout(() => {
+              setToasts((prev) => [...prev, { id: s.id, msg: `Your track "${title}" was approved! 🎉` }])
+              setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== s.id)), 5000)
+            }, i * 1200)
+          })
+        }
+      })
+      .catch(() => {})
+  }, [user?.id, user?.email])
+
+  const dismissPitch = (id) => {
+    const uid = user?.id || ''
+    const pitched = JSON.parse(localStorage.getItem(`tf_pitched_${uid}`) || '[]')
+    localStorage.setItem(`tf_pitched_${uid}`, JSON.stringify([...pitched, id]))
+    setPitchSongs((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  const streamValue = '—'
 
   return (
     <div className="overview-content">
@@ -89,9 +132,8 @@ export default function Overview() {
             </div>
           </div>
           <div className="stat-value">{streamValue}</div>
-          <div className="stat-badge positive">
-            <svg viewBox="0 0 24 24"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-            +12.4% vs last month
+          <div className="stat-badge neutral" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+            Streams will appear once your music goes live
           </div>
           {/* UGC Toggle */}
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: '0.5px solid var(--border-subtle)' }}>
@@ -130,10 +172,9 @@ export default function Overview() {
               <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
             </div>
           </div>
-          <div className="stat-value">$219.72</div>
-          <div className="stat-badge neutral">
-            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            Next payout: Oct 1st
+          <div className="stat-value">—</div>
+          <div className="stat-badge neutral" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+            Revenue appears after first payout cycle
           </div>
         </div>
       </div>
@@ -185,31 +226,41 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Pitch Your Song */}
-      <div className="glass-card pitch-song-section animate-in animate-in-delay-4">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700 }}>Pitch Your Song</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Upcoming releases eligible for playlist pitching</div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 6px rgba(34,197,94,0.7)', display: 'block', animation: 'blink 1.8s ease-in-out infinite' }} />
-            <span className="badge-new">New</span>
-          </div>
-        </div>
-        {PITCH_SONGS.map((s) => (
-          <div key={s.name} className="pitch-song-row">
-            <div className="pitch-song-info">
-              <span className="pitch-song-name">{s.name}</span>
-              <span className="pitch-song-date">Release: {s.release}</span>
+      {/* Pitch Your Song — only shown when there are eligible approved songs */}
+      {pitchSongs.length > 0 && (
+        <div className="glass-card pitch-song-section animate-in animate-in-delay-4">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700 }}>Pitch Your Song</div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Your approved releases eligible for playlist pitching</div>
             </div>
-            <Link to="/pitch-song" className="pitch-cta">Apply Now</Link>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 6px rgba(34,197,94,0.7)', display: 'block', animation: 'blink 1.8s ease-in-out infinite' }} />
+              <span className="badge-new">New</span>
+            </div>
           </div>
-        ))}
-        <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 12, lineHeight: 1.5 }}>
-          Songs with release dates 15–20 days away are eligible for editorial playlist pitching. Tap "Apply Now" to submit your pitch.
-        </p>
-      </div>
+          {pitchSongs.map((s) => {
+            const title = s.data?.song_title || '(untitled)'
+            return (
+              <div key={s.id} className="pitch-song-row">
+                <div className="pitch-song-info">
+                  <span className="pitch-song-name">{title}</span>
+                  <span className="pitch-song-date">Approved · Ready to pitch</span>
+                </div>
+                <button
+                  className="pitch-cta"
+                  onClick={() => { dismissPitch(s.id); navigate('/pitch-song', { state: { songTitle: title, submissionId: s.id } }) }}
+                >
+                  Apply Now
+                </button>
+              </div>
+            )
+          })}
+          <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 12, lineHeight: 1.5 }}>
+            These tracks have been approved for distribution. Pitch them to editorial playlists now.
+          </p>
+        </div>
+      )}
 
       {/* Streaming Velocity */}
       <div className="glass-card velocity-section animate-in animate-in-delay-3">
@@ -266,6 +317,23 @@ export default function Overview() {
           </Link>
         </div>
       </section>
+
+      {/* Approval notification toasts */}
+      {toasts.map((t, i) => (
+        <div key={t.id} style={{
+          position: 'fixed', bottom: 28 + i * 68, right: 28, zIndex: 9999,
+          background: 'rgba(18,14,10,0.97)', border: '0.5px solid rgba(34,197,94,0.35)',
+          borderRadius: 14, padding: '14px 18px',
+          display: 'flex', alignItems: 'center', gap: 12,
+          fontSize: 14, color: '#fff',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          animation: 'slideIn .3s ease',
+          maxWidth: 340,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+          {t.msg}
+        </div>
+      ))}
     </div>
   )
 }

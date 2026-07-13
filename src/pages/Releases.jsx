@@ -1,24 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
-const RELEASES = [
-  { id: 1, title: 'Midnight Echoes', type: 'Single', date: 'May 12, 2026', status: 'Live', statusClass: 'success', streams: '68,432', platforms: ['Spotify', 'Apple Music', 'YouTube Music'] },
-  { id: 2, title: 'Neon Dreams EP', type: 'EP', date: 'Apr 3, 2026', status: 'Live', statusClass: 'success', streams: '52,108', platforms: ['Spotify', 'Apple Music'] },
-  { id: 3, title: 'Urban Pulse', type: 'Single', date: 'Mar 28, 2026', status: 'Live', statusClass: 'success', streams: '41,290', platforms: ['Spotify', 'Amazon Music'] },
-  { id: 4, title: 'Golden Hour', type: 'Album', date: 'Jun 20, 2026', status: 'Pending', statusClass: 'processing', streams: '—', platforms: ['Spotify', 'Apple Music', 'YouTube Music', 'Amazon Music'] },
-  { id: 5, title: 'Velvet Skyline', type: 'Single', date: 'Jul 1, 2026', status: 'Scheduled', statusClass: 'scheduled', streams: '—', platforms: ['All Platforms'] },
-]
+const BASE = 'https://backend1-xzx5.onrender.com'
 
-const STATUS_COLORS = {
-  success: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.25)', color: '#22C55E' },
-  processing: { bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.25)', color: '#3B82F6' },
-  scheduled: { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.25)', color: '#EAB308' },
+const STATUS_META = {
+  approved: { label: 'Live',     bg: 'rgba(34,197,94,0.1)',  border: 'rgba(34,197,94,0.25)',  color: '#22C55E' },
+  pending:  { label: 'Pending',  bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.25)', color: '#3B82F6' },
+  declined: { label: 'Declined', bg: 'rgba(239,68,68,0.1)',  border: 'rgba(239,68,68,0.25)',  color: '#EF4444' },
+}
+
+const TYPE_LABELS = {
+  new_song: 'Single', transfer_song: 'Transfer',
+  new_album: 'Album', transfer_album: 'Transfer Album',
+  profile_mismatch: 'Support', claim_removal: 'Support', insta_link: 'Support',
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export default function Releases() {
+  const { user } = useAuth()
   const [filter, setFilter] = useState('All')
+  const [releases, setReleases] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const filtered = filter === 'All' ? RELEASES : RELEASES.filter((r) => r.status === filter)
+  useEffect(() => {
+    fetch(`${BASE}/submissions/my`, { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : { submissions: [] })
+      .then((d) => {
+        const songAlbum = (d.submissions || []).filter((s) =>
+          ['new_song','transfer_song','new_album','transfer_album'].includes(s.submission_type)
+        )
+        setReleases(songAlbum)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [user?.id])
+
+  const filtered = filter === 'All'
+    ? releases
+    : releases.filter((r) => STATUS_META[r.status]?.label === filter)
 
   return (
     <>
@@ -37,48 +61,57 @@ export default function Releases() {
 
       {/* Filter Tabs */}
       <div className="category-tabs animate-in animate-in-delay-2">
-        {['All', 'Live', 'Pending', 'Scheduled'].map((f) => (
+        {['All', 'Live', 'Pending', 'Declined'].map((f) => (
           <button key={f} className={`category-tab${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
         ))}
       </div>
 
       <div className="glass-card animate-in animate-in-delay-3" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="data-table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Release</th><th>Type</th><th>Release Date</th><th>Streams</th><th>Platforms</th><th>Status</th><th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => {
-                const sc = STATUS_COLORS[r.statusClass]
-                return (
-                  <tr key={r.id}>
-                    <td>
-                      <div className="song-cell">
-                        <div className="song-thumb">
-                          <svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><path d="M8 17V5l12-2v12"/></svg>
+        {loading ? (
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading releases…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            {releases.length === 0 ? 'No releases yet. Submit your first song or album!' : 'No releases match this filter.'}
+          </div>
+        ) : (
+          <div className="data-table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Release</th><th>Type</th><th>Submitted</th><th>Streams</th><th>Status</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r) => {
+                  const sm = STATUS_META[r.status] || STATUS_META.pending
+                  const title = r.data?.song_title || r.data?.album_name || '(untitled)'
+                  const type = TYPE_LABELS[r.submission_type] || r.submission_type
+                  return (
+                    <tr key={r.id}>
+                      <td>
+                        <div className="song-cell">
+                          <div className="song-thumb">
+                            <svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><path d="M8 17V5l12-2v12"/></svg>
+                          </div>
+                          <span className="song-name">{title}</span>
                         </div>
-                        <span className="song-name">{r.title}</span>
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 12.5 }}>{r.type}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.date}</td>
-                    <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)' }}>{r.streams}</td>
-                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.platforms.slice(0, 2).join(', ')}{r.platforms.length > 2 ? ` +${r.platforms.length - 2}` : ''}</td>
-                    <td>
-                      <span style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, background: sc.bg, border: `0.5px solid ${sc.border}`, color: sc.color }}>{r.status}</span>
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-ghost">Details</button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)', fontSize: 12.5 }}>{type}</td>
+                      <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{fmtDate(r.created_at)}</td>
+                      <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)' }}>—</td>
+                      <td>
+                        <span style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, background: sm.bg, border: `0.5px solid ${sm.border}`, color: sm.color }}>{sm.label}</span>
+                      </td>
+                      <td>
+                        <button className="btn btn-sm btn-ghost">Details</button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   )

@@ -4,29 +4,9 @@ import RevenueChart from '../components/charts/RevenueChart'
 import StreamsChart from '../components/charts/StreamsChart'
 import PlatformChart from '../components/charts/PlatformChart'
 
-const TOP_TRACKS = [
-  { rank: '01', name: 'Midnight Echoes', artist: 'Original Release', streams: '68,432', revenue: '$65.21', trend: '+24.3%', trendUp: true, platform: 'Spotify', platColor: '#1DB954', platBg: 'rgba(29,185,84,0.12)' },
-  { rank: '02', name: 'Neon Dreams', artist: 'Original Release', streams: '52,108', revenue: '$49.87', trend: '+18.7%', trendUp: true, platform: 'Apple Music', platColor: '#FC3C44', platBg: 'rgba(252,60,68,0.12)' },
-  { rank: '03', name: 'Urban Pulse', artist: 'Ft. DJ Phantom', streams: '41,290', revenue: '$39.44', trend: '+9.2%', trendUp: true, platform: 'Spotify', platColor: '#1DB954', platBg: 'rgba(29,185,84,0.12)' },
-  { rank: '04', name: 'Golden Hour', artist: 'Original Release', streams: '38,651', revenue: '$36.92', trend: '-3.1%', trendUp: false, platform: 'YouTube Music', platColor: '#FF4444', platBg: 'rgba(255,0,0,0.12)' },
-  { rank: '05', name: 'Velvet Skyline', artist: 'Ft. Aria Rose', streams: '30,316', revenue: '$28.28', trend: '+5.6%', trendUp: true, platform: 'Spotify', platColor: '#1DB954', platBg: 'rgba(29,185,84,0.12)' },
-]
-
-const PLATFORM_SPLIT = [
-  { name: 'Spotify', pct: '42%', color: '#1DB954' },
-  { name: 'Apple Music', pct: '24%', color: '#FC3C44' },
-  { name: 'YouTube Music', pct: '15%', color: '#FF0000' },
-  { name: 'Amazon', pct: '9%', color: '#FF9900' },
-  { name: 'Tidal', pct: '6%', color: '#00FFFF' },
-  { name: 'Other', pct: '4%', color: 'rgba(255,255,255,0.15)' },
-]
-
-const GEO = [
-  { country: 'United States', pct: '38%' },
-  { country: 'United Kingdom', pct: '18%' },
-  { country: 'Germany', pct: '12%' },
-  { country: 'India', pct: '9%' },
-]
+const TOP_TRACKS = []
+const PLATFORM_SPLIT = []
+const GEO = []
 
 const RANGES = ['Last 3 Months', 'Last 6 Months', 'Last 12 Months', 'All Time']
 
@@ -81,13 +61,13 @@ export default function Stats() {
       <div className="stats-grid-2 animate-in animate-in-delay-2" style={{ isolation: 'isolate' }}>
         <div className="glass-card mini-stat-card">
           <div className="mini-stat-label">Total Streams</div>
-          <div className="mini-stat-value">230,797</div>
-          <div className="mini-stat-change text-green">+12.4%</div>
+          <div className="mini-stat-value">—</div>
+          <div className="mini-stat-change" style={{ color: 'var(--text-muted)', fontSize: 12 }}>No data yet</div>
         </div>
         <div className="glass-card mini-stat-card">
           <div className="mini-stat-label">Total Revenue</div>
-          <div className="mini-stat-value">$2,641</div>
-          <div className="mini-stat-change text-green">+18.2%</div>
+          <div className="mini-stat-value">—</div>
+          <div className="mini-stat-change" style={{ color: 'var(--text-muted)', fontSize: 12 }}>No data yet</div>
         </div>
       </div>
 
@@ -110,13 +90,7 @@ export default function Stats() {
               <PlatformChart hideList />
             </div>
             <div style={{ flex: 1 }}>
-              {PLATFORM_SPLIT.map((p) => (
-                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: p.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, flex: 1 }}>{p.name}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-display)' }}>{p.pct}</span>
-                </div>
-              ))}
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, paddingTop: 8 }}>No platform data yet.</div>
             </div>
           </div>
         </div>
@@ -152,6 +126,9 @@ export default function Stats() {
               </tr>
             </thead>
             <tbody>
+              {TOP_TRACKS.length === 0 && (
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No stream data yet. Distribute your first release to see stats here.</td></tr>
+              )}
               {TOP_TRACKS.map((t) => (
                 <tr key={t.rank}>
                   <td style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t.rank}</td>
@@ -187,7 +164,15 @@ export default function Stats() {
             <p className="chart-subtitle">Where your listeners are located</p>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginTop: 8 }}>
+        <div className="geo-map-placeholder">
+          <div className="geo-dot" style={{ top: '35%', left: '25%' }} />
+          <div className="geo-dot" style={{ top: '30%', left: '48%', animationDelay: '0.5s' }} />
+          <div className="geo-dot" style={{ top: '45%', left: '52%', animationDelay: '1s' }} />
+          <div className="geo-dot" style={{ top: '32%', left: '72%', animationDelay: '0.3s' }} />
+          <div className="geo-dot" style={{ top: '55%', left: '78%', animationDelay: '0.8s' }} />
+          <div className="geo-dot" style={{ top: '65%', left: '30%', animationDelay: '1.2s' }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginTop: 24 }}>
           {GEO.map((g) => (
             <div key={g.country} style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{g.country}</div>
