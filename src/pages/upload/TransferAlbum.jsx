@@ -325,9 +325,12 @@ export default function TransferAlbum() {
       });
   }
 
-  function renderArtist(song, type, artist, num) {
+  function renderArtist(song, type, artist, num, locked) {
     const isMain = type === 'main';
     const title = isMain ? 'Main Artist #' + num : 'Featured Artist #' + num;
+    const lockName    = isMain && !!locked?.artist_name;
+    const lockSpotify = isMain && !!locked?.spotify_url;
+    const lockApple   = isMain && !!locked?.apple_music_url;
     return (
       <div className="artist-group" id={artist.id} key={artist.id}>
         <div className="artist-group-header">
@@ -349,6 +352,7 @@ export default function TransferAlbum() {
               type="text"
               className="form-input"
               placeholder="Artist name"
+              disabled={lockName}
               value={artist.name}
               onChange={(e) => updateArtist(song.id, type, artist.id, { name: e.target.value })}
             />
@@ -361,6 +365,7 @@ export default function TransferAlbum() {
               type="url"
               className="form-input"
               placeholder="https://open.spotify.com/artist/..."
+              disabled={lockSpotify}
               value={artist.spotify}
               onChange={(e) => updateArtist(song.id, type, artist.id, { spotify: e.target.value })}
             />
@@ -373,6 +378,7 @@ export default function TransferAlbum() {
               type="url"
               className="form-input"
               placeholder="https://music.apple.com/artist/..."
+              disabled={lockApple}
               value={artist.apple}
               onChange={(e) => updateArtist(song.id, type, artist.id, { apple: e.target.value })}
             />
@@ -719,7 +725,7 @@ export default function TransferAlbum() {
             )}
           </div>
           <div id={song.id + '-mainArtists'}>
-            {song.mainArtists.map((a, idx) => renderArtist(song, 'main', a, idx + 1))}
+            {song.mainArtists.map((a, idx) => renderArtist(song, 'main', a, idx + 1, i === 0 && idx === 0 ? profileData : null))}
           </div>
           {song.mainArtists.length === 0 && (
             <div
@@ -950,7 +956,7 @@ export default function TransferAlbum() {
         </div>
         <button type="button" className="add-song-btn" onClick={addSong}>+ Add Another Song</button>
 
-        {(songs[0]?.mainArtists?.[0]?.spotify || songs[0]?.mainArtists?.[0]?.apple) && (
+        {!profileData?.spotify_url && (songs[0]?.mainArtists?.[0]?.spotify || songs[0]?.mainArtists?.[0]?.apple) && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>These Spotify and Apple Music profile links will be <strong>permanently saved</strong> to your Tunefry profile.</p>

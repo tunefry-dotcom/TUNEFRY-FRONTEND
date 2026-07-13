@@ -486,11 +486,17 @@ export default function NewSong() {
               </div>
               <div className="form-grid">
                 <div className="form-group col-span-2"><label className="form-label">Artist Name <span className="req">*</span></label>
-                  <input type="text" className="form-input" name={`main_artists[${i}][name]`} placeholder="Main artist name" value={a.name} onChange={(e) => updateMainArtist(a.key, 'name', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
-                  <input type="url" className="form-input" name={`main_artists[${i}][spotify]`} placeholder="https://open.spotify.com/artist/..." value={a.spotify} onChange={(e) => updateMainArtist(a.key, 'spotify', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
-                  <input type="url" className="form-input" name={`main_artists[${i}][apple_music]`} placeholder="https://music.apple.com/artist/..." value={a.apple_music} onChange={(e) => updateMainArtist(a.key, 'apple_music', e.target.value)} /></div>
+                  <input type="text" className="form-input" name={`main_artists[${i}][name]`} placeholder="Main artist name" value={a.name}
+                    disabled={i === 0 && !!profileData?.artist_name}
+                    onChange={(e) => updateMainArtist(a.key, 'name', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist && !profileData?.spotify_url ? <span className="req">*</span> : i === 0 && profileData?.spotify_url ? null : <span className="opt-tag">(optional)</span>}</label>
+                  <input type="url" className="form-input" name={`main_artists[${i}][spotify]`} placeholder="https://open.spotify.com/artist/..." value={a.spotify}
+                    disabled={i === 0 && !!profileData?.spotify_url}
+                    onChange={(e) => updateMainArtist(a.key, 'spotify', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist && !profileData?.apple_music_url ? <span className="req">*</span> : i === 0 && profileData?.apple_music_url ? null : <span className="opt-tag">(optional)</span>}</label>
+                  <input type="url" className="form-input" name={`main_artists[${i}][apple_music]`} placeholder="https://music.apple.com/artist/..." value={a.apple_music}
+                    disabled={i === 0 && !!profileData?.apple_music_url}
+                    onChange={(e) => updateMainArtist(a.key, 'apple_music', e.target.value)} /></div>
                 <div className="form-group col-span-2"><label className="form-label">Instagram <span className="opt-tag">(optional)</span></label>
                   <input type="url" className="form-input" name={`main_artists[${i}][instagram]`} placeholder="https://www.instagram.com/artist/..." value={a.instagram} onChange={(e) => updateMainArtist(a.key, 'instagram', e.target.value)} /></div>
               </div>
@@ -509,8 +515,8 @@ export default function NewSong() {
           </p>
         )}
 
-        {/* Permanent save notice */}
-        {mainArtists[0]?.spotify || mainArtists[0]?.apple_music ? (
+        {/* Permanent save notice — only on first-time entry (not yet in profile) */}
+        {!profileData?.spotify_url && (mainArtists[0]?.spotify || mainArtists[0]?.apple_music) ? (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>

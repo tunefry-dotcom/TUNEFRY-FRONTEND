@@ -35,6 +35,8 @@ export default function Profile() {
   })
 
   const [errors, setErrors] = useState({})
+  const [savedSpotify, setSavedSpotify] = useState(false)
+  const [savedAppleMusic, setSavedAppleMusic] = useState(false)
 
   // Load the real profile on mount; seed email from the auth user.
   useEffect(() => {
@@ -42,6 +44,8 @@ export default function Profile() {
     getProfile()
       .then((p) => {
         if (!active) return
+        setSavedSpotify(!!p.spotify_url)
+        setSavedAppleMusic(!!p.apple_music_url)
         setForm((f) => ({
           ...f,
           fullName: p.full_name || user?.full_name || '',
@@ -228,13 +232,19 @@ export default function Profile() {
           {/* Spotify */}
           <div className="pf-form-group">
             <label className="pf-form-label">Spotify Profile URL</label>
-            <input type="url" className="pf-form-input" value={form.spotify} onChange={set('spotify')} placeholder="https://open.spotify.com/artist/..." />
+            <input type="url" className="pf-form-input" value={form.spotify}
+              onChange={savedSpotify ? undefined : set('spotify')}
+              disabled={savedSpotify}
+              placeholder="https://open.spotify.com/artist/..." />
           </div>
 
           {/* Apple Music */}
           <div className="pf-form-group">
             <label className="pf-form-label">Apple Music Profile URL</label>
-            <input type="url" className="pf-form-input" value={form.appleMusicUrl} onChange={set('appleMusicUrl')} placeholder="https://music.apple.com/artist/..." />
+            <input type="url" className="pf-form-input" value={form.appleMusicUrl}
+              onChange={savedAppleMusic ? undefined : set('appleMusicUrl')}
+              disabled={savedAppleMusic}
+              placeholder="https://music.apple.com/artist/..." />
           </div>
 
           {/* Instagram */}

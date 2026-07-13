@@ -348,13 +348,15 @@ export default function NewAlbum() {
               updateArtist={updateArtist}
               handleSongAudio={handleSongAudio}
               maxArtists={maxArtists}
+              profileData={profileData}
+              songIndex={idx}
             />
           ))}
         </div>
         <button type="button" className="add-song-btn" onClick={addSong}>+ Add Another Song</button>
 
         {/* Permanent save notice */}
-        {(songs[0]?.mainArtists?.[0]?.spotify || songs[0]?.mainArtists?.[0]?.apple) && (
+        {!profileData?.spotify_url && (songs[0]?.mainArtists?.[0]?.spotify || songs[0]?.mainArtists?.[0]?.apple) && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>These Spotify and Apple Music profile links will be <strong>permanently saved</strong> to your Tunefry profile.</p>
@@ -419,9 +421,12 @@ function ynClass(base, isYes) {
   }
 }
 
-function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist }) {
+function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, locked }) {
   const isMain = type === 'main'
   const title = isMain ? `Main Artist #${num}` : `Featured Artist #${num}`
+  const lockName    = isMain && !!locked?.artist_name
+  const lockSpotify = isMain && !!locked?.spotify_url
+  const lockApple   = isMain && !!locked?.apple_music_url
   return (
     <div className="artist-group">
       <div className="artist-group-header">
@@ -429,16 +434,16 @@ function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist }) {
         <button type="button" className="remove-artist-btn" onClick={() => removeArtist(song.key, type, artist.key)}>&#215;</button>
       </div>
       <div className="form-grid">
-        <div className="form-group col-span-2"><label className="form-label">Artist Name {isMain && <span className="req">*</span>}</label><input type="text" className="form-input" placeholder="Artist name" value={artist.name} onChange={(e) => updateArtist(song.key, type, artist.key, 'name', e.target.value)} /></div>
-        <div className="form-group"><label className="form-label">Spotify Profile Link <span className="opt-tag">(optional)</span></label><input type="url" className="form-input" placeholder="https://open.spotify.com/artist/..." value={artist.spotify} onChange={(e) => updateArtist(song.key, type, artist.key, 'spotify', e.target.value)} /></div>
-        <div className="form-group"><label className="form-label">Apple Music Profile Link <span className="opt-tag">(optional)</span></label><input type="url" className="form-input" placeholder="https://music.apple.com/artist/..." value={artist.apple} onChange={(e) => updateArtist(song.key, type, artist.key, 'apple', e.target.value)} /></div>
+        <div className="form-group col-span-2"><label className="form-label">Artist Name {isMain && <span className="req">*</span>}</label><input type="text" className="form-input" placeholder="Artist name" disabled={lockName} value={artist.name} onChange={(e) => updateArtist(song.key, type, artist.key, 'name', e.target.value)} /></div>
+        <div className="form-group"><label className="form-label">Spotify Profile Link {isMain && !lockSpotify ? <span className="opt-tag">(optional)</span> : null}</label><input type="url" className="form-input" placeholder="https://open.spotify.com/artist/..." disabled={lockSpotify} value={artist.spotify} onChange={(e) => updateArtist(song.key, type, artist.key, 'spotify', e.target.value)} /></div>
+        <div className="form-group"><label className="form-label">Apple Music Profile Link {isMain && !lockApple ? <span className="opt-tag">(optional)</span> : null}</label><input type="url" className="form-input" placeholder="https://music.apple.com/artist/..." disabled={lockApple} value={artist.apple} onChange={(e) => updateArtist(song.key, type, artist.key, 'apple', e.target.value)} /></div>
         <div className="form-group col-span-2"><label className="form-label">Instagram <span className="opt-tag">(optional)</span></label><input type="url" className="form-input" placeholder="https://www.instagram.com/artist/..." value={artist.instagram} onChange={(e) => updateArtist(song.key, type, artist.key, 'instagram', e.target.value)} /></div>
       </div>
     </div>
   )
 }
 
-function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, toggleMood, addArtist, removeArtist, updateArtist, handleSongAudio, maxArtists }) {
+function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, toggleMood, addArtist, removeArtist, updateArtist, handleSongAudio, maxArtists, profileData, songIndex }) {
   const audioRef = useRef(null)
   const ytCid = ynClass('yn-btn', song.ytCid)
   const ytBeat = ynClass('yn-btn', song.ytBeat)
@@ -536,7 +541,8 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
         </div>
         <div>
           {song.mainArtists.map((a, i) => (
-            <ArtistGroup key={a.key} song={song} type="main" artist={a} num={i + 1} updateArtist={updateArtist} removeArtist={removeArtist} />
+            <ArtistGroup key={a.key} song={song} type="main" artist={a} num={i + 1} updateArtist={updateArtist} removeArtist={removeArtist}
+              locked={songIndex === 0 && i === 0 ? profileData : null} />
           ))}
         </div>
         {song.mainArtists.length === 0 && (

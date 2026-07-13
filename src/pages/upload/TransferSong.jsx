@@ -327,15 +327,21 @@ export default function TransferSong() {
               <div className="form-grid">
                 <div className="form-group col-span-2">
                   <label className="form-label">Artist Name <span className="req">*</span></label>
-                  <input className="form-input" type="text" placeholder="Main artist name" value={artist.name} onChange={(e) => updateMainArtist(i, 'name', e.target.value)} style={i === 0 ? markStyle('mainArtist0') : undefined} />
+                  <input className="form-input" type="text" placeholder="Main artist name" value={artist.name}
+                    disabled={i === 0 && !!profileData?.artist_name}
+                    onChange={(e) => updateMainArtist(i, 'name', e.target.value)} style={i === 0 && !profileData?.artist_name ? markStyle('mainArtist0') : undefined} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
-                  <input className="form-input" type="url" placeholder="https://open.spotify.com/artist/..." value={artist.spotify} onChange={(e) => updateMainArtist(i, 'spotify', e.target.value)} />
+                  <label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist && !profileData?.spotify_url ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
+                  <input className="form-input" type="url" placeholder="https://open.spotify.com/artist/..." value={artist.spotify}
+                    disabled={i === 0 && !!profileData?.spotify_url}
+                    onChange={(e) => updateMainArtist(i, 'spotify', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
-                  <input className="form-input" type="url" placeholder="https://music.apple.com/artist/..." value={artist.apple_music} onChange={(e) => updateMainArtist(i, 'apple_music', e.target.value)} />
+                  <label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist && !profileData?.apple_music_url ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
+                  <input className="form-input" type="url" placeholder="https://music.apple.com/artist/..." value={artist.apple_music}
+                    disabled={i === 0 && !!profileData?.apple_music_url}
+                    onChange={(e) => updateMainArtist(i, 'apple_music', e.target.value)} />
                 </div>
                 <div className="form-group col-span-2">
                   <label className="form-label">Instagram <span className="opt-tag">(optional)</span></label>
@@ -346,8 +352,8 @@ export default function TransferSong() {
           ))}
         </div>
 
-        {/* Permanent save notice */}
-        {(mainArtists[0]?.spotify || mainArtists[0]?.apple_music) && (
+        {/* Permanent save notice — only on first-time entry */}
+        {!profileData?.spotify_url && (mainArtists[0]?.spotify || mainArtists[0]?.apple_music) && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>These Spotify and Apple Music profile links will be <strong>permanently saved</strong> to your Tunefry profile.</p>
