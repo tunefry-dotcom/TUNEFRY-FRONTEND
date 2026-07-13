@@ -4,26 +4,26 @@ import { signup as apiSignup } from '../../lib/auth'
 
 export default function Signup() {
   const [showPass, setShowPass] = useState(false)
-  const [form, setForm] = useState({ fullName: '', email: '', password: '' })
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [form, setForm] = useState({ fullName: '', artistName: '', phone: '', email: '', password: '', confirmPassword: '' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setSuccess('')
-    if (form.fullName.trim().length < 2) {
-      setError('Please enter your full name.')
-      return
-    }
-    if (form.password.length < 8) {
-      setError('Password must be at least 8 characters.')
-      return
-    }
+    if (form.fullName.trim().length < 2) { setError('Please enter your full name.'); return }
+    if (form.artistName.trim().length < 2) { setError('Please enter your artist name.'); return }
+    if (form.phone.trim().length < 7) { setError('Please enter a valid phone number.'); return }
+    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return }
+    if (form.password !== form.confirmPassword) { setError('Passwords do not match.'); return }
     setLoading(true)
     try {
-      const data = await apiSignup(form.fullName.trim(), form.email, form.password)
+      const data = await apiSignup(form.fullName.trim(), form.artistName.trim(), form.phone.trim(), form.email, form.password)
       setSuccess(data.message || 'Account created! Please check your email to confirm.')
     } catch (err) {
       setError(err.message)
@@ -73,14 +73,17 @@ export default function Signup() {
                 <label className="form-label">Full Name</label>
                 <div className="input-icon-wrap">
                   <svg className="input-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  <input
-                    type="text"
-                    className="form-input has-icon"
-                    placeholder="Your full name"
-                    value={form.fullName}
-                    onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-                    required
-                  />
+                  <input type="text" className="form-input has-icon" placeholder="Your full name"
+                    value={form.fullName} onChange={set('fullName')} required />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Artist Name</label>
+                <div className="input-icon-wrap">
+                  <svg className="input-icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                  <input type="text" className="form-input has-icon" placeholder="Your artist / stage name"
+                    value={form.artistName} onChange={set('artistName')} required />
                 </div>
               </div>
 
@@ -88,14 +91,17 @@ export default function Signup() {
                 <label className="form-label">Email Address</label>
                 <div className="input-icon-wrap">
                   <svg className="input-icon" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                  <input
-                    type="email"
-                    className="form-input has-icon"
-                    placeholder="you@example.com"
-                    value={form.email}
-                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                    required
-                  />
+                  <input type="email" className="form-input has-icon" placeholder="you@example.com"
+                    value={form.email} onChange={set('email')} required />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Phone Number</label>
+                <div className="input-icon-wrap">
+                  <svg className="input-icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.59a16 16 0 006.5 6.5l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                  <input type="tel" className="form-input has-icon" placeholder="+91 98765 43210"
+                    value={form.phone} onChange={set('phone')} required />
                 </div>
               </div>
 
@@ -103,16 +109,25 @@ export default function Signup() {
                 <label className="form-label">Password</label>
                 <div className="input-icon-wrap">
                   <svg className="input-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  <input
-                    type={showPass ? 'text' : 'password'}
-                    className="form-input has-icon has-icon-right"
-                    placeholder="Min. 8 characters"
-                    value={form.password}
-                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                    required
-                  />
+                  <input type={showPass ? 'text' : 'password'} className="form-input has-icon has-icon-right"
+                    placeholder="Min. 8 characters" value={form.password} onChange={set('password')} required />
                   <button type="button" className="input-icon-right" onClick={() => setShowPass((v) => !v)}>
                     {showPass
+                      ? <svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
+                <div className="input-icon-wrap">
+                  <svg className="input-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <input type={showConfirm ? 'text' : 'password'} className="form-input has-icon has-icon-right"
+                    placeholder="Re-enter password" value={form.confirmPassword} onChange={set('confirmPassword')} required />
+                  <button type="button" className="input-icon-right" onClick={() => setShowConfirm((v) => !v)}>
+                    {showConfirm
                       ? <svg viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                       : <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     }

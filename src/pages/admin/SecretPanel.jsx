@@ -210,13 +210,13 @@ function UsersView({ secret, onSessionExpired }) {
           : filtered.length === 0 ? <div style={{ textAlign: 'center', color: '#555', paddingTop: '3rem' }}>{search ? 'No users match.' : 'No users found.'}</div>
           : (
             <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 11, overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.5fr 1fr 1fr 1.2fr', padding: '.65rem 1.1rem', borderBottom: '1px solid #1a1a1a', color: '#555', fontSize: '.74rem', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-                <span>User</span><span>Plan</span><span>Status</span><span>Joined</span><span>Last Sign In</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.1fr 1.2fr 1fr 1fr', padding: '.65rem 1.1rem', borderBottom: '1px solid #1a1a1a', color: '#555', fontSize: '.74rem', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                <span>User</span><span>Artist Name</span><span>Phone</span><span>Plan</span><span>Joined</span><span>Last Sign In</span>
               </div>
               {filtered.map((u, i) => {
                 const ps = PLAN_COLORS[u.plan] || PLAN_COLORS.free
                 return (
-                  <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.5fr 1fr 1fr 1.2fr', padding: '.85rem 1.1rem', alignItems: 'center', borderBottom: i < filtered.length - 1 ? '1px solid #161616' : 'none' }}
+                  <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.1fr 1.2fr 1fr 1fr', padding: '.85rem 1.1rem', alignItems: 'center', borderBottom: i < filtered.length - 1 ? '1px solid #161616' : 'none' }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#161616')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -226,8 +226,9 @@ function UsersView({ secret, onSessionExpired }) {
                         <div style={{ color: '#6b7280', fontSize: '.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</div>
                       </div>
                     </div>
+                    <div style={{ color: '#d1d5db', fontSize: '.83rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.artist_name || <span style={{ color: '#555', fontStyle: 'italic' }}>—</span>}</div>
+                    <div style={{ color: '#d1d5db', fontSize: '.83rem' }}>{u.phone || <span style={{ color: '#555', fontStyle: 'italic' }}>—</span>}</div>
                     <span style={{ display: 'inline-block', padding: '.22rem .6rem', borderRadius: 5, fontSize: '.75rem', fontWeight: 600, background: ps.bg, color: ps.text, border: `1px solid ${ps.border}` }}>{u.plan_name}</span>
-                    <div style={{ color: u.status === 'active' ? '#4ade80' : '#f87171', fontSize: '.83rem', fontWeight: 500, textTransform: 'capitalize' }}>{u.status}</div>
                     <div style={{ color: '#6b7280', fontSize: '.8rem' }}>{fmtDate(u.created_at)}</div>
                     <div style={{ color: '#6b7280', fontSize: '.8rem' }}>{fmtDate(u.last_sign_in_at)}</div>
                   </div>
