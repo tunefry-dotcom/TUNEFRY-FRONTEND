@@ -112,10 +112,16 @@ export default function YourPlan() {
       <div className="yp-grid">
         {PLANS.map((p, idx) => {
           const isCurrent = idx === currentRank
-          const isLower = idx < currentRank
+          const isLower   = idx < currentRank
           const isUpgrade = idx > currentRank
+          const isExpired = ['expired', 'cancelled'].includes(user?.status)
+          const hasActivePaid = !user?.isFree && !isExpired
+
+          // When plan is expired every card is selectable (same plan too)
+          const canChoose = isExpired ? true : (isCurrent && p.id === 'free') || isUpgrade
+
           return (
-            <div key={p.id} className={`yp-card${p.pop ? ' pop' : ''}${isCurrent ? ' current' : ''}`}>
+            <div key={p.id} className={`yp-card${p.pop ? ' pop' : ''}${isCurrent && !isExpired ? ' current' : ''}`}>
               {p.pop && <div className="yp-badge-pop">Most Popular</div>}
               <div className="yp-card-icon">{p.icon}</div>
               <div className="yp-card-name">{p.name}</div>
@@ -132,25 +138,18 @@ export default function YourPlan() {
                   </li>
                 ))}
               </ul>
-              {isCurrent && p.id === 'free' && (
-                <button className="yp-cta upgrade" onClick={handleSelectFree}>
-                  Choose Plan
-                </button>
-              )}
-              {isCurrent && p.id !== 'free' && <button className="yp-cta current" disabled>Current Plan</button>}
-              {isLower && (
-                <button className="yp-cta upgrade" onClick={() => handleUpgrade(p.id)} disabled={busyPlan !== null}>
-                  {busyPlan === p.id ? 'Processing…' : 'Choose Plan'}
-                </button>
-              )}
-              {isUpgrade && (
+              {canChoose ? (
                 <button
                   className="yp-cta upgrade"
                   disabled={busyPlan !== null}
-                  onClick={() => handleUpgrade(p.id)}
+                  onClick={() => p.id === 'free' ? handleSelectFree() : handleUpgrade(p.id)}
                 >
                   {busyPlan === p.id ? 'Processing…' : 'Choose Plan'}
                 </button>
+              ) : isCurrent && hasActivePaid ? (
+                <button className="yp-cta current" disabled>Current Plan</button>
+              ) : (
+                <button className="yp-cta included" disabled>Not Available</button>
               )}
             </div>
           )
