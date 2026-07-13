@@ -76,7 +76,7 @@ export default function Withdrawal() {
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', marginBottom: 10 }}>Available Balance</div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 10vw, 52px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1 }}>
-            <span style={{ fontSize: 28, fontWeight: 600, color: 'var(--accent)', marginRight: 4 }}>₹</span>2,641.00
+            <span style={{ fontSize: 28, fontWeight: 600, color: 'var(--accent)', marginRight: 4 }}>₹</span>0.00
           </div>
           <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 14 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: 'rgba(34,197,94,0.1)', border: '0.5px solid rgba(34,197,94,0.25)', color: '#22C55E' }}>

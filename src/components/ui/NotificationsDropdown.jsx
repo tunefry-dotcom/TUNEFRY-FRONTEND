@@ -1,12 +1,5 @@
 import { forwardRef } from 'react'
 
-const NOTIFICATIONS = [
-  { id: 1, text: 'Your track "Midnight Drive" has been approved and is now live on Spotify.', time: '2m ago', read: false },
-  { id: 2, text: 'Apple Music royalties of $124.50 are ready for withdrawal.', time: '1h ago', read: false },
-  { id: 3, text: 'New playlist placement opportunity available for your song.', time: '3h ago', read: true },
-  { id: 4, text: 'Your profile verification has been completed successfully.', time: '1d ago', read: true },
-]
-
 const NotificationsDropdown = forwardRef(function NotificationsDropdown({ open, style, onClose }, ref) {
   return (
     <div
@@ -19,15 +12,13 @@ const NotificationsDropdown = forwardRef(function NotificationsDropdown({ open, 
         <button className="notif-clear">Mark all read</button>
       </div>
       <div className="notif-list">
-        {NOTIFICATIONS.map((n) => (
-          <div key={n.id} className={`notif-item${n.read ? ' read' : ''}`}>
-            <span className="notif-dot-sm" />
-            <div>
-              <p className="notif-text">{n.text}</p>
-              <p className="notif-time">{n.time}</p>
-            </div>
-          </div>
-        ))}
+        <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: 10, display: 'block', margin: '0 auto 10px' }}>
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          No notifications yet
+        </div>
       </div>
     </div>
   )

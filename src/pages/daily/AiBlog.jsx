@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import '../../styles/ai-blog.css'
+import ComingSoon from '../../components/ComingSoon'
 
 function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1) }
 
@@ -101,6 +102,7 @@ export default function AiBlog() {
   }
 
   return (
+    <ComingSoon>
     <>
       <div className="page-label animate-in">
         <svg viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
@@ -275,5 +277,6 @@ export default function AiBlog() {
         </div>
       </div>
     </>
+    </ComingSoon>
   )
 }
