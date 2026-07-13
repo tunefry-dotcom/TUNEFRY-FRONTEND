@@ -121,6 +121,7 @@ function AdminSidebar({ active, onNav, onLock }) {
     { id: 'claim-removal', label: 'Claim Removal', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
     { id: 'insta-link', label: 'Insta Link', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg> },
     { id: 'new-artist', label: 'New Artist Profile Updates', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> },
+    { id: 'purchases', label: 'Plan Purchases', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
   ]
 
   return (
@@ -590,6 +591,198 @@ function NewArtistView({ secret, onSessionExpired }) {
   )
 }
 
+// ── Plan Purchases view ──────────────────────────────────────────────────────
+const PURCHASE_PLAN_DISPLAY = {
+  'single-song':   { label: 'Single Song',   col: { bg: '#052e16', text: '#4ade80', border: '#166534' } },
+  'starter':       { label: 'Starter',        col: { bg: '#052e16', text: '#4ade80', border: '#166534' } },
+  'single-artist': { label: 'Single Artist',  col: { bg: '#1e1b4b', text: '#818cf8', border: '#3730a3' } },
+  'double-artist': { label: 'Double Artist',  col: { bg: '#1c1002', text: '#fbbf24', border: '#92400e' } },
+  'label':         { label: 'Label',          col: { bg: '#2d0a0a', text: '#f87171', border: '#7f1d1d' } },
+  // legacy underscore keys
+  'single_song':   { label: 'Single Song',   col: { bg: '#052e16', text: '#4ade80', border: '#166534' } },
+  'single_artist': { label: 'Single Artist',  col: { bg: '#1e1b4b', text: '#818cf8', border: '#3730a3' } },
+  'double_artist': { label: 'Double Artist',  col: { bg: '#1c1002', text: '#fbbf24', border: '#92400e' } },
+}
+
+function PurchasesView({ secret, onSessionExpired }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [planFilter, setPlanFilter] = useState('all')
+
+  const fetchData = useCallback(async () => {
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(`${BASE}/admin/purchases`, { headers: { 'X-Admin-Secret': secret } })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail || `Error ${res.status}`) }
+      setData(await res.json())
+    } catch (e) { setError(e.message) }
+    finally { setLoading(false) }
+  }, [secret, onSessionExpired])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  const allPurchases = data?.purchases || []
+
+  const filtered = allPurchases.filter((p) => {
+    if (planFilter !== 'all' && p.plan !== planFilter) return false
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      return p.email.toLowerCase().includes(q) || (p.full_name || '').toLowerCase().includes(q) || (p.artist_name || '').toLowerCase().includes(q)
+    }
+    return true
+  })
+
+  const activePurchases = allPurchases.filter((p) => p.status === 'active')
+  const totalRevenue = data?.total_revenue_inr || 0
+
+  const FILTER_OPTIONS = [
+    { key: 'all', label: 'All Plans' },
+    { key: 'single-song', label: 'Single Song' },
+    { key: 'starter', label: 'Starter' },
+    { key: 'single-artist', label: 'Single Artist' },
+    { key: 'double-artist', label: 'Double Artist' },
+    { key: 'label', label: 'Label' },
+  ]
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '1.5rem 1.75rem 1rem', borderBottom: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h2 style={{ color: '#f0f0f0', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Plan Purchases</h2>
+          <p style={{ color: '#555', margin: '.2rem 0 0', fontSize: '.82rem' }}>
+            {loading ? 'Loading…' : `${data?.total || 0} total · ${activePurchases.length} active`}
+          </p>
+        </div>
+        <button onClick={fetchData} disabled={loading}
+          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.55rem .8rem', color: '#9ca3af', cursor: 'pointer', fontSize: '.82rem', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflow: 'auto', padding: '1.25rem 1.75rem' }}>
+        {error && <div style={{ background: '#2d0a0a', border: '1px solid #7f1d1d', borderRadius: 9, padding: '.875rem 1rem', color: '#f87171', fontSize: '.85rem', marginBottom: '1rem' }}>Error: {error}</div>}
+
+        {/* Stats cards */}
+        {!loading && data && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: '1.25rem' }}>
+            <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: '1rem 1.25rem' }}>
+              <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Total Purchases</div>
+              <div style={{ color: '#f0f0f0', fontSize: '1.75rem', fontWeight: 700, lineHeight: 1 }}>{data.total}</div>
+              <div style={{ color: '#555', fontSize: '.75rem', marginTop: 5 }}>{activePurchases.length} active</div>
+            </div>
+            <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: '1rem 1.25rem' }}>
+              <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Active Revenue</div>
+              <div style={{ color: '#4ade80', fontSize: '1.75rem', fontWeight: 700, lineHeight: 1 }}>₹{totalRevenue.toLocaleString('en-IN')}</div>
+              <div style={{ color: '#555', fontSize: '.75rem', marginTop: 5 }}>from active plans</div>
+            </div>
+            <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: '1rem 1.25rem' }}>
+              <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>By Plan</div>
+              {Object.entries(data.plan_counts || {}).length === 0
+                ? <span style={{ color: '#555', fontSize: '.82rem', fontStyle: 'italic' }}>No active purchases</span>
+                : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {Object.entries(data.plan_counts).map(([plan, count]) => {
+                      const pd = PURCHASE_PLAN_DISPLAY[plan]
+                      const col = pd?.col || { bg: '#1a1a1a', text: '#9ca3af', border: '#2a2a2a' }
+                      return (
+                        <span key={plan} style={{ padding: '.2rem .6rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: col.bg, color: col.text, border: `1px solid ${col.border}` }}>
+                          {pd?.label || plan} × {count}
+                        </span>
+                      )
+                    })}
+                  </div>}
+            </div>
+          </div>
+        )}
+
+        {/* Search + plan filter */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search email, name or artist…" value={search} onChange={(e) => setSearch(e.target.value)}
+              style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.55rem .8rem .55rem 2rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            {FILTER_OPTIONS.map((fo) => (
+              <button key={fo.key} onClick={() => setPlanFilter(fo.key)}
+                style={{ padding: '.38rem .7rem', borderRadius: 6, border: `1px solid ${planFilter === fo.key ? '#ff6b2b' : '#2a2a2a'}`, background: planFilter === fo.key ? 'rgba(255,107,43,.12)' : '#1a1a1a', color: planFilter === fo.key ? '#ff6b2b' : '#9ca3af', fontSize: '.75rem', fontWeight: planFilter === fo.key ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all .1s' }}>
+                {fo.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Table */}
+        {loading
+          ? <div style={{ textAlign: 'center', color: '#555', paddingTop: '3rem' }}>Loading…</div>
+          : filtered.length === 0
+            ? <div style={{ textAlign: 'center', color: '#555', paddingTop: '3rem' }}>{(data?.total || 0) === 0 ? 'No plan purchases yet.' : 'No purchases match your filters.'}</div>
+            : (
+              <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 11, overflow: 'hidden' }}>
+                {/* Column headers */}
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr 1.3fr 0.85fr 1.1fr 1fr 1fr', padding: '.65rem 1.1rem', borderBottom: '1px solid #1a1a1a', color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                  <span>User</span><span>Artist</span><span>Plan</span><span>Status</span><span>Payment</span><span>Started</span><span>Expires</span>
+                </div>
+                {filtered.map((p, i) => {
+                  const pd = PURCHASE_PLAN_DISPLAY[p.plan]
+                  const pc = pd?.col || { bg: '#1a1a1a', text: '#9ca3af', border: '#2a2a2a' }
+                  const isActive = p.status === 'active'
+                  const isExpired = !isActive && p.expires_at && new Date(p.expires_at) < new Date()
+                  const statusStyle = isActive
+                    ? { bg: '#052e16', text: '#4ade80', border: '#166534', label: 'Active' }
+                    : isExpired
+                      ? { bg: '#2d0a0a', text: '#f87171', border: '#7f1d1d', label: 'Expired' }
+                      : { bg: '#1a1a1a', text: '#9ca3af', border: '#2a2a2a', label: (p.status || 'Unknown').charAt(0).toUpperCase() + (p.status || '').slice(1) }
+                  return (
+                    <div key={p.id || i}
+                      style={{ display: 'grid', gridTemplateColumns: '2fr 1.1fr 1.3fr 0.85fr 1.1fr 1fr 1fr', padding: '.85rem 1.1rem', alignItems: 'center', borderBottom: i < filtered.length - 1 ? '1px solid #161616' : 'none', transition: 'background .1s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#161616')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                      {/* User */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+                        <div style={{ width: 31, height: 31, borderRadius: 8, flexShrink: 0, background: avatarColor(p.email), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '.75rem' }}>{initials(p.email)}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: '#f0f0f0', fontWeight: 500, fontSize: '.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.full_name || <span style={{ color: '#555', fontStyle: 'italic' }}>No name</span>}</div>
+                          <div style={{ color: '#6b7280', fontSize: '.76rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.email}</div>
+                        </div>
+                      </div>
+                      {/* Artist */}
+                      <div style={{ color: '#d1d5db', fontSize: '.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.artist_name || <span style={{ color: '#444', fontStyle: 'italic' }}>—</span>}</div>
+                      {/* Plan */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ padding: '.2rem .55rem', borderRadius: 5, fontSize: '.73rem', fontWeight: 600, background: pc.bg, color: pc.text, border: `1px solid ${pc.border}` }}>{pd?.label || p.plan_name}</span>
+                        {p.plan_price_inr > 0 && <span style={{ color: '#4b5563', fontSize: '.7rem' }}>₹{p.plan_price_inr.toLocaleString('en-IN')}</span>}
+                      </div>
+                      {/* Status */}
+                      <span style={{ padding: '.2rem .55rem', borderRadius: 5, fontSize: '.73rem', fontWeight: 600, background: statusStyle.bg, color: statusStyle.text, border: `1px solid ${statusStyle.border}`, whiteSpace: 'nowrap', display: 'inline-block' }}>{statusStyle.label}</span>
+                      {/* Payment */}
+                      <div style={{ minWidth: 0 }}>
+                        {p.payment_ref ? (
+                          <>
+                            <span style={{ padding: '.1rem .4rem', borderRadius: 4, fontSize: '.66rem', fontWeight: 600, background: 'rgba(99,102,241,.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,.3)', display: 'inline-block', marginBottom: 3 }}>Razorpay</span>
+                            <div style={{ color: '#6b7280', fontSize: '.69rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'monospace' }} title={p.payment_ref}>{p.payment_ref.length > 16 ? p.payment_ref.slice(0, 14) + '…' : p.payment_ref}</div>
+                          </>
+                        ) : (
+                          <span style={{ padding: '.1rem .4rem', borderRadius: 4, fontSize: '.66rem', fontWeight: 600, background: 'rgba(234,179,8,.1)', color: '#fbbf24', border: '1px solid rgba(234,179,8,.25)' }}>Manual</span>
+                        )}
+                      </div>
+                      {/* Dates */}
+                      <div style={{ color: '#6b7280', fontSize: '.78rem' }}>{fmtDate(p.started_at)}</div>
+                      <div style={{ color: isExpired ? '#f87171' : '#6b7280', fontSize: '.78rem' }}>{p.expires_at ? fmtDate(p.expires_at) : <span style={{ color: '#333', fontStyle: 'italic' }}>Perpetual</span>}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+      </div>
+    </div>
+  )
+}
+
 // ── Root ────────────────────────────────────────────────────────────────────
 const SUBMISSION_VIEWS = [
   { id: 'songs',           title: 'Songs' },
@@ -618,6 +811,7 @@ export default function SecretPanel() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {activeNav === 'users' && <UsersView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'new-artist' && <NewArtistView secret={secret} onSessionExpired={handleLock} />}
+        {activeNav === 'purchases' && <PurchasesView secret={secret} onSessionExpired={handleLock} />}
         {subView && (
           <SubmissionsView key={subView.id} secret={secret} category={subView.id} title={subView.title} onSessionExpired={handleLock} />
         )}
