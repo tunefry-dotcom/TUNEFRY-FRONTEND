@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import '../../styles/new-song.css';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../lib/profile';
@@ -116,6 +116,7 @@ function isCustomLabelAllowed() {
 
 export default function NewSong() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const maxArtists = planMaxArtists(user?.plan)
 
   // Toggles
@@ -378,9 +379,8 @@ export default function NewSong() {
         if (isNewArtist) {
           try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used') } catch { /* private */ }
         }
-        setToastVisible(true);
         setSubmitting(false);
-        setTimeout(() => setToastVisible(false), 4000);
+        navigate('/', { state: { successMsg: 'New Song Submission' } });
       })
       .catch((err) => {
         alert(err && err.message ? err.message : 'Submission failed. Please try again.');

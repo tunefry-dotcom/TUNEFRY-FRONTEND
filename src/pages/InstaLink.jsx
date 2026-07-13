@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import '../styles/insta-link.css'
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
 export default function InstaLink() {
+  const navigate = useNavigate()
   const [instagramUrl, setInstagramUrl] = useState('')
   const [facebookUrl, setFacebookUrl] = useState('')
   const [songName, setSongName] = useState('')
@@ -68,7 +69,7 @@ export default function InstaLink() {
     })
       .then((res) => (res.ok ? res.json() : res.json().then((e) => { throw e })))
       .then(() => {
-        showToast('success', 'Link request submitted! Processing may take up to 24 hours.')
+        navigate('/', { state: { successMsg: 'Instagram Link Request' } })
         setInstagramUrl('')
         setFacebookUrl('')
         setSongName('')

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const BASE = 'https://backend1-xzx5.onrender.com'
@@ -32,9 +32,21 @@ const MOBILE_UTILS = [
 export default function Overview() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [ugcOn, setUgcOn] = useState(false)
   const [pitchSongs, setPitchSongs] = useState([])
   const [toasts, setToasts] = useState([])
+
+  // Show success toast when redirected from a form submission
+  useEffect(() => {
+    const msg = location.state?.successMsg
+    if (!msg) return
+    const id = `form-${Date.now()}`
+    setToasts((prev) => [...prev, { id, msg: `Your ${msg} was successfully submitted! ✅` }])
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000)
+    // Clear navigation state so toast doesn't re-show on refresh
+    window.history.replaceState({}, document.title)
+  }, [location.state?.successMsg])
 
   useEffect(() => {
     if (!user?.email) return

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import '../styles/profile-mismatch.css';
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
 export default function ProfileMismatch() {
+  const navigate = useNavigate();
   const [profileAction, setProfileAction] = useState('');
   const [errText, setErrText] = useState('Please fill in all required fields.');
   const [errVisible, setErrVisible] = useState(false);
@@ -62,8 +63,7 @@ export default function ProfileMismatch() {
       .then((res) => (res.ok ? res.json() : res.json().then((e) => { throw e; })))
       .then(() => {
         setSubmitting(false);
-        setToastVisible(true);
-        setTimeout(() => setToastVisible(false), 4000);
+        navigate('/', { state: { successMsg: 'Profile Mismatch Report' } });
         setSectionName('');
         setSectionLink('');
         setPlatform('');

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import '../../styles/transfer-song.css'
 import { useAuth } from '../../context/AuthContext'
 import { getProfile, updateProfile } from '../../lib/profile'
@@ -19,6 +19,7 @@ const SUB_CATEGORIES = {
 
 export default function TransferSong() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const maxArtists = planMaxArtists(user?.plan)
 
   // Simple text/select field values (mirrors the original DOM element ids)
@@ -230,10 +231,10 @@ export default function TransferSong() {
         if (isNewArtist) {
           try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used') } catch { /* private */ }
         }
-        setToastVisible(true)
         setSubmitting(false)
+        navigate('/', { state: { successMsg: 'Song Transfer Request' } })
         setTimeout(() => {
-          setToastVisible(false)
+          void 0
         }, 4200)
       })
       .catch((err) => {

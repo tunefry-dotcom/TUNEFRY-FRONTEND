@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import '../styles/claim-removal.css'
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
 export default function ClaimRemoval() {
+  const navigate = useNavigate()
   const [songName, setSongName] = useState('')
   const [artistName, setArtistName] = useState('')
   const [youtubeLink, setYoutubeLink] = useState('')
@@ -108,7 +109,7 @@ export default function ClaimRemoval() {
         return res.ok ? res.json() : res.json().then(function (e) { throw e })
       })
       .then(function () {
-        showToast('success', 'Claim removal submitted. Claim will be released within 48 hrs* (working days).')
+        navigate('/', { state: { successMsg: 'Claim Removal Request' } })
         setSongName('')
         setArtistName('')
         setYoutubeLink('')
