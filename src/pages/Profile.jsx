@@ -44,10 +44,10 @@ export default function Profile() {
         if (!active) return
         setForm((f) => ({
           ...f,
-          fullName: p.full_name || '',
-          artistName: p.artist_name || '',
+          fullName: p.full_name || user?.full_name || '',
+          artistName: p.artist_name || user?.artist_name || '',
           email: user?.email || '',
-          phone: p.phone || '',
+          phone: p.phone || user?.phone || '',
           dob: p.date_of_birth || '',
           gender: p.gender || '',
           city: p.city || '',
@@ -77,7 +77,7 @@ export default function Profile() {
   }
 
   const saveProfile = async () => {
-    const requiredMap = { fullName: 'full_name', artistName: 'artist_name', phone: 'phone', city: 'city', state: 'state', dob: 'date_of_birth' }
+    const requiredMap = { city: 'city', state: 'state', dob: 'date_of_birth' }
     const newErrors = {}
     Object.keys(requiredMap).forEach(k => { if (!form[k]?.trim()) newErrors[k] = true })
     setErrors(newErrors)
@@ -164,11 +164,11 @@ export default function Profile() {
           <div className="pf-form-row">
             <div className="pf-form-group">
               <label className="pf-form-label">Full Name</label>
-              <input type="text" className={`pf-form-input${errors.fullName ? ' input-error' : ''}`} value={form.fullName} onChange={set('fullName')} placeholder="Your full name" />
+              <input type="text" className="pf-form-input" value={form.fullName} disabled />
             </div>
             <div className="pf-form-group">
               <label className="pf-form-label">Artist / Stage Name</label>
-              <input type="text" className={`pf-form-input${errors.artistName ? ' input-error' : ''}`} value={form.artistName} onChange={set('artistName')} placeholder="Stage name" />
+              <input type="text" className="pf-form-input" value={form.artistName} disabled />
             </div>
           </div>
 
@@ -180,7 +180,7 @@ export default function Profile() {
             </div>
             <div className="pf-form-group">
               <label className="pf-form-label">Phone Number</label>
-              <input type="tel" className={`pf-form-input${errors.phone ? ' input-error' : ''}`} value={form.phone} onChange={set('phone')} placeholder="+91 XXXXX XXXXX" />
+              <input type="tel" className="pf-form-input" value={form.phone} disabled />
             </div>
           </div>
 
