@@ -33,7 +33,12 @@ export default function YourPlan() {
   const currentRank = Math.max(0, PLANS.findIndex((p) => p.id === user?.plan))
   const currentName = user?.planName || PLANS[currentRank]?.name || 'Free'
 
+  function setPlanChosen(planId) {
+    try { localStorage.setItem(`tf_plan_chosen_${user?.id}`, planId) } catch { /* private */ }
+  }
+
   async function handleSelectFree() {
+    setPlanChosen('free')
     showToast('success', 'Free plan activated! You can upgrade anytime.')
   }
 
@@ -56,6 +61,7 @@ export default function YourPlan() {
         contact: user?.phone || '',
       }
       await startUpgrade(planId, prefill)
+      setPlanChosen(planId)
       await refreshUser()
       showToast('success', 'Payment successful — your plan has been upgraded! 🎉')
     } catch (err) {

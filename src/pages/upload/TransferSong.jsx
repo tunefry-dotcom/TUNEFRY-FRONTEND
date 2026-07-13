@@ -195,6 +195,9 @@ export default function TransferSong() {
     })
       .then((res) => (res.ok ? res.json() : res.json().then((e) => { throw e })))
       .then(() => {
+        if (user?.plan === 'single-song') {
+          try { localStorage.setItem(`tf_single_used_${user.id}`, '1') } catch { /* private */ }
+        }
         setToastVisible(true)
         setSubmitting(false)
         setTimeout(() => {
