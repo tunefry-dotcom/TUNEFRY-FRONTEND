@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 const VELOCITY_BARS = [
   { label: 'Spotify', height: 100, hot: false, delay: '0s' },
   { label: 'Apple', height: 180, hot: true, delay: '0.08s' },
-  { label: 'YT Music', height: 80, hot: false, delay: '0.16s' },
+  { label: 'YouTube', height: 80, hot: false, delay: '0.16s' },
   { label: 'Amazon', height: 120, hot: false, delay: '0.24s' },
   { label: 'Tidal', height: 70, hot: false, delay: '0.32s' },
   { label: 'Deezer', height: 110, hot: false, delay: '0.4s' },
@@ -59,12 +59,12 @@ export default function Overview() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1
             className="page-title"
-            style={{ background: 'linear-gradient(135deg, #fff 40%, rgba(242,101,34,0.9) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+            style={{ background: 'linear-gradient(135deg, #fff 40%, rgba(242,101,34,0.9) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', margin: 0 }}
           >
             Overview
           </h1>
           {/* Equalizer bars */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 22, opacity: 0.55, flexShrink: 0 }} aria-hidden="true">
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, opacity: 0.55, flexShrink: 0, alignSelf: 'center' }} aria-hidden="true">
             {[{ h: 8, d: '0s' }, { h: 16, d: '0.15s' }, { h: 22, d: '0.3s' }, { h: 14, d: '0.45s' }, { h: 10, d: '0.6s' }].map((b, i) => (
               <div key={i} style={{ width: 3, borderRadius: 2, background: 'var(--accent)', animation: 'eqBounce 0.9s ease-in-out infinite alternate', animationDelay: b.d, height: b.h, transformOrigin: 'bottom' }} />
             ))}
@@ -138,55 +138,45 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Upgrade nudge — only for free-plan users */}
-      {user?.isFree && (
-        <div className="glass-card" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: 20, padding: '20px 24px', marginBottom: 8,
-          borderLeft: '3px solid var(--accent)',
-          flexWrap: 'wrap',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flex: 1, minWidth: 0 }}>
-            <span style={{
-              width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-              background: 'rgba(242,101,34,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, stroke: 'var(--accent)', fill: 'none', strokeWidth: 2 }}>
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-            </span>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-                Unlock Your Full Potential
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
-                You're on the Free plan. Upgrade to distribute albums, transfer your catalogue, pitch to playlists &amp; keep 100% of your royalties.
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {['Albums', 'Catalogue Transfer', 'Playlist Pitching', '100% Royalties'].map((feat) => (
-                  <span key={feat} style={{
-                    fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100,
-                    background: 'rgba(242,101,34,0.1)', border: '0.5px solid rgba(242,101,34,0.25)',
-                    color: 'var(--accent-light, #FF8A50)',
-                  }}>{feat}</span>
-                ))}
+      {/* Plan nudge — state-aware */}
+      {(() => {
+        if (!user?.isFree) return null
+        const uid = user.id || ''
+        const planChosen = (() => { try { return localStorage.getItem(`tf_plan_chosen_${uid}`) } catch { return null } })()
+        const neverChosen = !planChosen
+        const title = neverChosen ? 'No Plan Active' : 'Unlock Your Full Potential'
+        const desc = neverChosen
+          ? 'Choose a plan to start distributing your music on 100+ platforms.'
+          : "You're on the Free plan. Upgrade to distribute albums, transfer your catalogue, pitch to playlists & keep 100% of your royalties."
+        const ctaLabel = neverChosen ? 'Choose Plan' : 'Upgrade Plan'
+        return (
+          <div className="glass-card" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 20, padding: '20px 24px', marginBottom: 8,
+            borderLeft: '3px solid var(--accent)', flexWrap: 'wrap',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flex: 1, minWidth: 0 }}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: 'rgba(242,101,34,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, stroke: 'var(--accent)', fill: 'none', strokeWidth: 2 }}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </span>
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{title}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>{desc}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {['Albums', 'Catalogue Transfer', 'Playlist Pitching', '100% Royalties'].map((feat) => (
+                    <span key={feat} style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: 'rgba(242,101,34,0.1)', border: '0.5px solid rgba(242,101,34,0.25)', color: 'var(--accent-light, #FF8A50)' }}>{feat}</span>
+                  ))}
+                </div>
               </div>
             </div>
+            <button onClick={() => navigate('/plan')} style={{ flexShrink: 0, padding: '10px 22px', borderRadius: 100, background: 'var(--accent)', border: 'none', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px var(--accent-glow, rgba(242,101,34,0.35))' }}>
+              {ctaLabel}
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/plan')}
-            style={{
-              flexShrink: 0, padding: '10px 22px', borderRadius: 100,
-              background: 'var(--accent)', border: 'none', color: '#fff',
-              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
-              cursor: 'pointer', whiteSpace: 'nowrap',
-              boxShadow: '0 4px 16px var(--accent-glow, rgba(242,101,34,0.35))',
-            }}
-          >
-            Upgrade Plan
-          </button>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Ad Banner placeholder */}
       <div style={{ width: '100%', margin: '4px 0 8px', textAlign: 'center' }}>
