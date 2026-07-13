@@ -120,6 +120,7 @@ export default function NewSong() {
 
   // Toggles
   const [ytBeat, setYtBeat] = useState(null); // null | true | false
+  const [ytBeatLink, setYtBeatLink] = useState('');
   const [ytCid, setYtCid] = useState(null);
   const [explicit, setExplicit] = useState(false); // default: No active
 
@@ -295,6 +296,10 @@ export default function NewSong() {
       setTimeout(() => setTitleError(false), 2500);
       return;
     }
+    if (ytBeat === true && !ytBeatLink.trim()) {
+      setArtistLinkError('Please provide the YouTube beat/sample link.');
+      return;
+    }
     // Validate Spotify/Apple links for the first main artist (required unless new artist)
     if (!isNewArtist && mainArtists.length > 0) {
       const first = mainArtists[0]
@@ -329,10 +334,11 @@ export default function NewSong() {
     fd.append('composer_name', composerName.trim());
     fd.append('lyricist_name', lyricistName.trim());
     fd.append('explicit', explicit ? 'yes' : 'no');
-    fd.append('language', language);
-    fd.append('genre', genre);
-    fd.append('sub_category', subCategory);
-    fd.append('mood', mood);
+    fd.append('language', LANGUAGES.find((l) => l.value === language)?.text || language);
+    fd.append('genre', GENRES.find((g) => g.value === genre)?.text || genre);
+    fd.append('sub_category', (() => { const g = GENRES.find((gn) => gn.value === genre); return (g && SUBCATS[g.text]?.find((s) => s.value === subCategory)?.text) || subCategory; })());
+    fd.append('mood', MOODS.find((m) => m.value === mood)?.text || mood);
+    if (ytBeat === true && ytBeatLink.trim()) fd.append('yt_beat_link', ytBeatLink.trim());
     fd.append('original_release_date', originalReleaseDate);
     fd.append('go_live_date', goLiveDate);
     fd.append('yt_content_id', ytCid ? 'yes' : 'no');
@@ -438,6 +444,19 @@ export default function NewSong() {
               <button className={ytBeat === true ? 'yn-btn active-yes' : 'yn-btn'} id="ytBeatYes" onClick={() => setYtBeat(true)}>Yes</button>
             </div>
             <span className="form-hint">Does your track contain a beat or sample sourced from YouTube?</span>
+            {ytBeat === true && (
+              <div style={{ marginTop: 12 }}>
+                <label className="form-label">YouTube Beat / Sample Link <span className="req">*</span></label>
+                <input
+                  type="url"
+                  className="form-input"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={ytBeatLink}
+                  onChange={(e) => { setYtBeatLink(e.target.value); setArtistLinkError(''); }}
+                  style={{ marginTop: 6 }}
+                />
+              </div>
+            )}
           </div>
 
         </div>

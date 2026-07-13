@@ -120,7 +120,7 @@ function AdminSidebar({ active, onNav, onLock }) {
     { id: 'profile-mismatch', label: 'Profile Mismatch', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> },
     { id: 'claim-removal', label: 'Claim Removal', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
     { id: 'insta-link', label: 'Insta Link', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg> },
-    { id: 'new-artist', label: 'New Artist Updates', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> },
+    { id: 'new-artist', label: 'New Artist Profile Updates', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> },
   ]
 
   return (
@@ -461,7 +461,7 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
   )
 }
 
-// ── New Artist Updates view ─────────────────────────────────────────────────
+// ── New Artist Profile Updates view ─────────────────────────────────────────────────
 function NewArtistView({ secret, onSessionExpired }) {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -511,7 +511,7 @@ function NewArtistView({ secret, onSessionExpired }) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '1.5rem 1.75rem 1rem', borderBottom: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ color: '#f0f0f0', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>New Artist Updates</h2>
+          <h2 style={{ color: '#f0f0f0', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>New Artist Profile Updates</h2>
           <p style={{ color: '#555', margin: '.2rem 0 0', fontSize: '.82rem' }}>
             {loading ? 'Loading…' : <>{entries.length} total{pending > 0 && <span style={{ color: '#fbbf24', marginLeft: 6 }}>· {pending} pending</span>}</>}
           </p>
