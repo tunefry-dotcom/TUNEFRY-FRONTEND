@@ -33,21 +33,27 @@ export default function YourPlan() {
   const currentRank = Math.max(0, PLANS.findIndex((p) => p.id === user?.plan))
   const currentName = user?.planName || PLANS[currentRank]?.name || 'Free'
 
+  async function handleSelectFree() {
+    showToast('success', 'Free plan activated! You can upgrade anytime.')
+  }
+
   async function handleUpgrade(planId) {
     setBusyPlan(planId)
     try {
-      // Gate: basic details must be complete before payment.
-      const profile = await getProfile()
-      if (!profile.is_complete) {
-        showToast('error', 'Complete your basic details to continue to payment.')
-        navigate('/profile', { state: { from: 'upgrade', plan: planId } })
-        return
+      // Google OAuth users must complete their profile before payment.
+      if (user?.provider === 'google') {
+        const profile = await getProfile()
+        if (!profile.is_complete) {
+          showToast('error', 'Complete your basic details to continue to payment.')
+          navigate('/profile', { state: { from: 'upgrade', plan: planId } })
+          return
+        }
       }
 
       const prefill = {
-        name: profile.full_name || user?.full_name || '',
+        name: user?.full_name || '',
         email: user?.email || '',
-        contact: profile.phone || '',
+        contact: user?.phone || '',
       }
       await startUpgrade(planId, prefill)
       await refreshUser()
@@ -120,7 +126,12 @@ export default function YourPlan() {
                   </li>
                 ))}
               </ul>
-              {isCurrent && <button className="yp-cta current" disabled>Current Plan</button>}
+              {isCurrent && p.id === 'free' && (
+                <button className="yp-cta upgrade" onClick={handleSelectFree}>
+                  Activate Free Plan
+                </button>
+              )}
+              {isCurrent && p.id !== 'free' && <button className="yp-cta current" disabled>Current Plan</button>}
               {isLower && <button className="yp-cta included" disabled>Included</button>}
               {isUpgrade && (
                 <button

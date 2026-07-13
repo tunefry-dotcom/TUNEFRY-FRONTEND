@@ -30,16 +30,16 @@ export default function UpgradeBanner() {
     <div className="upgrade-banner" role="status">
       <div className="upgrade-banner-left">
         <span className="upgrade-banner-icon">
-          <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </span>
         <div className="upgrade-banner-text">
-          <strong>You’re on the Free plan.</strong>
-          <span> Upgrade to unlock albums, catalogue transfer, playlist pitching, Instagram linking &amp; 100% royalties.</span>
+          <strong>No plan active.</strong>
+          <span> Choose a plan to start distributing your music and unlock albums, 100% royalties &amp; more.</span>
         </div>
       </div>
       <div className="upgrade-banner-actions">
         <button className="upgrade-banner-cta" onClick={() => navigate('/plan')}>
-          Upgrade
+          Choose Plan
         </button>
         <button className="upgrade-banner-close" onClick={dismiss} aria-label="Dismiss">
           <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
