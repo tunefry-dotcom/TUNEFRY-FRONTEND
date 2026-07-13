@@ -134,18 +134,22 @@ export default function YourPlan() {
               </ul>
               {isCurrent && p.id === 'free' && (
                 <button className="yp-cta upgrade" onClick={handleSelectFree}>
-                  Activate Free Plan
+                  Choose Plan
                 </button>
               )}
               {isCurrent && p.id !== 'free' && <button className="yp-cta current" disabled>Current Plan</button>}
-              {isLower && <button className="yp-cta included" disabled>Included</button>}
+              {isLower && (
+                <button className="yp-cta upgrade" onClick={() => handleUpgrade(p.id)} disabled={busyPlan !== null}>
+                  {busyPlan === p.id ? 'Processing…' : 'Choose Plan'}
+                </button>
+              )}
               {isUpgrade && (
                 <button
                   className="yp-cta upgrade"
                   disabled={busyPlan !== null}
                   onClick={() => handleUpgrade(p.id)}
                 >
-                  {busyPlan === p.id ? 'Processing…' : 'Upgrade Plan'}
+                  {busyPlan === p.id ? 'Processing…' : 'Choose Plan'}
                 </button>
               )}
             </div>
