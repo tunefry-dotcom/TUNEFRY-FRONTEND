@@ -7,20 +7,25 @@ export default function Signup() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [form, setForm] = useState({ fullName: '', artistName: '', phone: '', email: '', password: '', confirmPassword: '' })
   const [error, setError] = useState('')
+  const [matchError, setMatchError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
+  const set = (field) => (e) => {
+    setForm((f) => ({ ...f, [field]: e.target.value }))
+    if (field === 'confirmPassword' || field === 'password') setMatchError('')
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setMatchError('')
     setSuccess('')
     if (form.fullName.trim().length < 2) { setError('Please enter your full name.'); return }
     if (form.artistName.trim().length < 2) { setError('Please enter your artist name.'); return }
     if (form.phone.trim().length < 7) { setError('Please enter a valid phone number.'); return }
     if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    if (form.password !== form.confirmPassword) { setError('Passwords do not match.'); return }
+    if (form.password !== form.confirmPassword) { setMatchError('Passwords do not match.'); return }
     setLoading(true)
     try {
       const data = await apiSignup(form.fullName.trim(), form.artistName.trim(), form.phone.trim(), form.email, form.password)
@@ -134,6 +139,13 @@ export default function Signup() {
                   </button>
                 </div>
               </div>
+
+              {matchError && (
+                <div style={{ color: '#f87171', fontSize: '13px', fontWeight: 500, padding: '10px 14px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  {matchError}
+                </div>
+              )}
 
               <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
                 {loading ? 'Creating account…' : 'Create Account'}
