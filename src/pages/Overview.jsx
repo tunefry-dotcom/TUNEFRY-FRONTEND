@@ -55,7 +55,6 @@ export default function Overview() {
       .then(({ submissions = [] }) => {
         const uid = user.id || ''
         const pitched = JSON.parse(localStorage.getItem(`tf_pitched_${uid}`) || '[]')
-        const seen   = JSON.parse(localStorage.getItem(`tf_seen_approvals_${uid}`) || '[]')
 
         // Pitch section: approved song submissions not yet pitched
         const eligible = submissions.filter((s) =>
@@ -65,22 +64,27 @@ export default function Overview() {
         ).slice(0, 3)
         setPitchSongs(eligible)
 
-        // Approval notifications: approved submissions not yet seen
-        const newApprovals = submissions.filter((s) =>
-          s.status === 'approved' && !seen.includes(s.id)
-        )
-        if (newApprovals.length > 0) {
-          localStorage.setItem(`tf_seen_approvals_${uid}`, JSON.stringify([
-            ...seen, ...newApprovals.map((s) => s.id),
-          ]))
-          newApprovals.forEach((s, i) => {
-            const title = s.data?.song_title || s.data?.album_name || 'your track'
-            setTimeout(() => {
-              setToasts((prev) => [...prev, { id: s.id, msg: `Your track "${title}" was approved! 🎉` }])
-              setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== s.id)), 5000)
-            }, i * 1200)
-          })
-        }
+        // Timestamp-based notification: show alert for approvals since last check.
+        // First visit: catch approvals from last 7 days.
+        const TS_KEY = `tf_notif_ts_${uid}`
+        const lastTs = Number(localStorage.getItem(TS_KEY) || '0')
+        const cutoff = lastTs > 0 ? lastTs : (Date.now() - 7 * 24 * 60 * 60 * 1000)
+        localStorage.setItem(TS_KEY, String(Date.now()))
+
+        const newApprovals = submissions.filter((s) => {
+          if (s.status !== 'approved') return false
+          const approvedAt = s.reviewed_at ? new Date(s.reviewed_at).getTime() : 0
+          return approvedAt > cutoff
+        })
+
+        newApprovals.forEach((s, i) => {
+          const title = s.data?.song_title || s.data?.album_name || 'your track'
+          setTimeout(() => {
+            const toastId = `${s.id}-${Date.now()}`
+            setToasts((prev) => [...prev, { id: toastId, msg: `Your track "${title}" was approved! 🎉` }])
+            setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== toastId)), 6000)
+          }, i * 1200)
+        })
       })
       .catch(() => {})
   }
