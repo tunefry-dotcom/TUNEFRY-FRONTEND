@@ -98,7 +98,7 @@ export default function Releases() {
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: 12.5 }}>{type}</td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{fmtDate(r.created_at)}</td>
-                      <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)' }}>—</td>
+                      <td style={{ fontWeight: 600, fontFamily: 'var(--font-display)' }}>0</td>
                       <td>
                         <span style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, background: sm.bg, border: `0.5px solid ${sm.border}`, color: sm.color }}>{sm.label}</span>
                       </td>

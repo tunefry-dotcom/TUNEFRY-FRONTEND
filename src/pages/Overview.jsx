@@ -80,7 +80,7 @@ export default function Overview() {
     setPitchSongs((prev) => prev.filter((s) => s.id !== id))
   }
 
-  const streamValue = '—'
+  const streamValue = '0'
 
   return (
     <div className="overview-content">
@@ -172,7 +172,7 @@ export default function Overview() {
               <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
             </div>
           </div>
-          <div className="stat-value">—</div>
+          <div className="stat-value">₹0</div>
           <div className="stat-badge neutral" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
             Revenue appears after first payout cycle
           </div>

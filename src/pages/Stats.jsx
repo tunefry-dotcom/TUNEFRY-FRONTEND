@@ -61,12 +61,12 @@ export default function Stats() {
       <div className="stats-grid-2 animate-in animate-in-delay-2" style={{ isolation: 'isolate' }}>
         <div className="glass-card mini-stat-card">
           <div className="mini-stat-label">Total Streams</div>
-          <div className="mini-stat-value">—</div>
+          <div className="mini-stat-value">0</div>
           <div className="mini-stat-change" style={{ color: 'var(--text-muted)', fontSize: 12 }}>No data yet</div>
         </div>
         <div className="glass-card mini-stat-card">
           <div className="mini-stat-label">Total Revenue</div>
-          <div className="mini-stat-value">—</div>
+          <div className="mini-stat-value">0</div>
           <div className="mini-stat-change" style={{ color: 'var(--text-muted)', fontSize: 12 }}>No data yet</div>
         </div>
       </div>
