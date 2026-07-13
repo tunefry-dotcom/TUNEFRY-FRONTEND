@@ -65,6 +65,7 @@ export default function NewAlbum() {
   const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })()
   const [isNewArtist, setIsNewArtist] = useState(false)
   const [artistLinkError, setArtistLinkError] = useState('')
+  const [profileData, setProfileData] = useState(null)
 
   const [albumName, setAlbumName] = useState('')
   const [albumDescription, setAlbumDescription] = useState('')
@@ -106,7 +107,10 @@ export default function NewAlbum() {
       prev.map((s) => {
         if (s.key !== key) return s
         const listKey = type === 'main' ? 'mainArtists' : 'featuredArtists'
-        return { ...s, [listKey]: [...s[listKey], makeArtist()] }
+        const newArtist = type === 'main' && profileData
+          ? { ...makeArtist(), name: profileData.artist_name || '', spotify: profileData.spotify_url || '', apple: profileData.apple_music_url || '' }
+          : makeArtist()
+        return { ...s, [listKey]: [...s[listKey], newArtist] }
       })
     )
 
@@ -137,9 +141,10 @@ export default function NewAlbum() {
     reader.readAsDataURL(file)
   }
 
-  // Prefill first song's first main artist from profile on mount
+  // Prefill first song's first main artist from profile on mount; store for use when adding more artists
   useEffect(() => {
     getProfile().then((p) => {
+      setProfileData(p)
       if (p.artist_name || p.spotify_url || p.apple_music_url) {
         setSongs((prev) => prev.map((s, idx) => idx === 0 ? {
           ...s,

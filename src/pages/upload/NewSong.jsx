@@ -169,6 +169,7 @@ export default function NewSong() {
   const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })()
   const [isNewArtist, setIsNewArtist] = useState(false)
   const [artistLinkError, setArtistLinkError] = useState('')
+  const [profileData, setProfileData] = useState(null)
 
   // Submit / toast
   const [submitting, setSubmitting] = useState(false);
@@ -181,9 +182,10 @@ export default function NewSong() {
     if (savedLabel) setLabelSelectValue(savedLabel);
   }, [savedLabel]);
 
-  // Prefill first main artist from profile on mount
+  // Prefill first main artist from profile on mount; store for use when adding more artists
   useEffect(() => {
     getProfile().then((p) => {
+      setProfileData(p)
       if (p.artist_name || p.spotify_url || p.apple_music_url) {
         mainCounter.current += 1
         const n = mainCounter.current
@@ -216,7 +218,13 @@ export default function NewSong() {
     const n = mainCounter.current;
     setMainArtists((prev) => [
       ...prev,
-      { key: `main-artist-${n}`, num: n, name: '', spotify: '', apple_music: '', instagram: '' },
+      {
+        key: `main-artist-${n}`, num: n,
+        name: profileData?.artist_name || '',
+        spotify: profileData?.spotify_url || '',
+        apple_music: profileData?.apple_music_url || '',
+        instagram: '',
+      },
     ]);
   };
 

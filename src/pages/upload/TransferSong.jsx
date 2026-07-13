@@ -51,10 +51,12 @@ export default function TransferSong() {
   const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })()
   const [isNewArtist, setIsNewArtist] = useState(false)
   const [artistLinkError, setArtistLinkError] = useState('')
+  const [profileData, setProfileData] = useState(null)
 
-  // Prefill first main artist from profile on mount
+  // Prefill first main artist from profile on mount; store for use when adding more artists
   useEffect(() => {
     getProfile().then((p) => {
+      setProfileData(p)
       if (p.artist_name || p.spotify_url || p.apple_music_url) {
         setMainArtists([{ name: p.artist_name || '', spotify: p.spotify_url || '', apple_music: p.apple_music_url || '', instagram: '' }])
       }
@@ -84,7 +86,7 @@ export default function TransferSong() {
     if (isFeatured) {
       setFeaturedArtists((prev) => [...prev, { name: '', spotify: '', apple_music: '' }])
     } else {
-      setMainArtists((prev) => [...prev, { name: '', spotify: '', apple_music: '', instagram: '' }])
+      setMainArtists((prev) => [...prev, { name: profileData?.artist_name || '', spotify: profileData?.spotify_url || '', apple_music: profileData?.apple_music_url || '', instagram: '' }])
     }
   }
   const removeMainArtist = (i) => setMainArtists((prev) => prev.filter((_, idx) => idx !== i))

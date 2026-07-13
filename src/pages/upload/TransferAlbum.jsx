@@ -69,6 +69,7 @@ export default function TransferAlbum() {
   const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })();
   const [isNewArtist, setIsNewArtist] = useState(false);
   const [artistLinkError, setArtistLinkError] = useState('');
+  const [profileData, setProfileData] = useState(null);
 
   const [upcCode, setUpcCode] = useState('');
   const [albumIsrc, setAlbumIsrc] = useState('');
@@ -131,7 +132,10 @@ export default function TransferAlbum() {
     setSongs((prev) =>
       prev.map((s) => {
         if (s.id !== songId) return s;
-        if (type === 'main') return { ...s, mainArtists: [...s.mainArtists, makeArtist()] };
+        const newArtist = type === 'main' && profileData
+          ? { ...makeArtist(), name: profileData.artist_name || '', spotify: profileData.spotify_url || '', apple: profileData.apple_music_url || '' }
+          : makeArtist();
+        if (type === 'main') return { ...s, mainArtists: [...s.mainArtists, newArtist] };
         return { ...s, featuredArtists: [...s.featuredArtists, makeArtist()] };
       })
     );
@@ -195,9 +199,10 @@ export default function TransferAlbum() {
     updateSong(songId, { audioFileName: label });
   }
 
-  // Prefill first song's first main artist from profile on mount
+  // Prefill first song's first main artist from profile on mount; store for use when adding more artists
   useEffect(() => {
     getProfile().then((p) => {
+      setProfileData(p);
       if (p.artist_name || p.spotify_url || p.apple_music_url) {
         setSongs((prev) => prev.map((s, idx) => idx === 0 ? {
           ...s,
