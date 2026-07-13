@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import '../../styles/new-song.css';
 import { useAuth } from '../../context/AuthContext';
+import { getProfile, updateProfile } from '../../lib/profile';
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
@@ -164,6 +165,11 @@ export default function NewSong() {
   const [labelSelectValue, setLabelSelectValue] = useState('');
   const labelSetupRef = useRef(null);
 
+  // New-artist / profile prefill
+  const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })()
+  const [isNewArtist, setIsNewArtist] = useState(false)
+  const [artistLinkError, setArtistLinkError] = useState('')
+
   // Submit / toast
   const [submitting, setSubmitting] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
@@ -174,6 +180,23 @@ export default function NewSong() {
   useEffect(() => {
     if (savedLabel) setLabelSelectValue(savedLabel);
   }, [savedLabel]);
+
+  // Prefill first main artist from profile on mount
+  useEffect(() => {
+    getProfile().then((p) => {
+      if (p.artist_name || p.spotify_url || p.apple_music_url) {
+        mainCounter.current += 1
+        const n = mainCounter.current
+        setMainArtists([{
+          key: `main-artist-${n}`, num: n,
+          name: p.artist_name || '',
+          spotify: p.spotify_url || '',
+          apple_music: p.apple_music_url || '',
+          instagram: '',
+        }])
+      }
+    }).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveCustomLabelName = () => {
     const value = labelSetupValue.trim();
@@ -264,6 +287,13 @@ export default function NewSong() {
       setTimeout(() => setTitleError(false), 2500);
       return;
     }
+    // Validate Spotify/Apple links for the first main artist (required unless new artist)
+    if (!isNewArtist && mainArtists.length > 0) {
+      const first = mainArtists[0]
+      if (!first.spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return }
+      if (!first.apple_music?.trim()) { setArtistLinkError('Apple Music Profile Link is required for the main artist.'); return }
+    }
+    setArtistLinkError('')
     if (!guidelinesCheck || !rightsCheck) {
       setTermsError(true);
       setTimeout(() => setTermsError(false), 2500);
@@ -313,6 +343,7 @@ export default function NewSong() {
     if (audioInputRef.current && audioInputRef.current.files[0])
       fd.append('audio_file', audioInputRef.current.files[0]);
     fd.append('submission_type', 'new_song');
+    if (isNewArtist) fd.append('new_artist', 'true');
 
     fetch(`${BASE}/submissions/song`, {
       method: 'POST',
@@ -323,6 +354,14 @@ export default function NewSong() {
       .then(() => {
         if (user?.plan === 'single-song') {
           try { localStorage.setItem(`tf_single_used_${user.id}`, '1') } catch { /* private */ }
+        }
+        // Save first main artist's links to profile permanently
+        if (!isNewArtist && mainArtists[0]?.spotify) {
+          updateProfile({ spotify_url: mainArtists[0].spotify, apple_music_url: mainArtists[0].apple_music || '' }).catch(() => {})
+        }
+        // Mark new-artist checkbox as used (one-time)
+        if (isNewArtist) {
+          try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used') } catch { /* private */ }
         }
         setToastVisible(true);
         setSubmitting(false);
@@ -421,9 +460,9 @@ export default function NewSong() {
               <div className="form-grid">
                 <div className="form-group col-span-2"><label className="form-label">Artist Name <span className="req">*</span></label>
                   <input type="text" className="form-input" name={`main_artists[${i}][name]`} placeholder="Main artist name" value={a.name} onChange={(e) => updateMainArtist(a.key, 'name', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Spotify Link <span className="opt-tag">(optional)</span></label>
+                <div className="form-group"><label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
                   <input type="url" className="form-input" name={`main_artists[${i}][spotify]`} placeholder="https://open.spotify.com/artist/..." value={a.spotify} onChange={(e) => updateMainArtist(a.key, 'spotify', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Apple Music Link <span className="opt-tag">(optional)</span></label>
+                <div className="form-group"><label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
                   <input type="url" className="form-input" name={`main_artists[${i}][apple_music]`} placeholder="https://music.apple.com/artist/..." value={a.apple_music} onChange={(e) => updateMainArtist(a.key, 'apple_music', e.target.value)} /></div>
                 <div className="form-group col-span-2"><label className="form-label">Instagram <span className="opt-tag">(optional)</span></label>
                   <input type="url" className="form-input" name={`main_artists[${i}][instagram]`} placeholder="https://www.instagram.com/artist/..." value={a.instagram} onChange={(e) => updateMainArtist(a.key, 'instagram', e.target.value)} /></div>
@@ -441,6 +480,29 @@ export default function NewSong() {
           <p style={{ fontSize: '12px', color: '#f59e0b', margin: '8px 0 0', textAlign: 'right' }}>
             Plan limit reached ({maxArtists} main artist{maxArtists > 1 ? 's' : ''}). <Link to="/plan" style={{ color: '#f59e0b' }}>Upgrade</Link> to add more.
           </p>
+        )}
+
+        {/* Permanent save notice */}
+        {mainArtists[0]?.spotify || mainArtists[0]?.apple_music ? (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>
+              These Spotify and Apple Music profile links will be <strong>permanently saved</strong> to your Tunefry profile and cannot be changed here again.
+            </p>
+          </div>
+        ) : null}
+
+        {/* New artist checkbox — one-time, hides after first use */}
+        {!newArtistUsed && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <input type="checkbox" checked={isNewArtist} onChange={(e) => setIsNewArtist(e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+            I don't have a Spotify or Apple Music profile yet <span style={{ color: 'var(--text-muted)' }}>(new artist)</span>
+          </label>
+        )}
+
+        {/* Artist link validation error */}
+        {artistLinkError && (
+          <p style={{ marginTop: 10, fontSize: 12.5, color: '#f87171', fontWeight: 500 }}>{artistLinkError}</p>
         )}
       </div>
 
@@ -467,9 +529,9 @@ export default function NewSong() {
               <div className="form-grid">
                 <div className="form-group col-span-2"><label className="form-label">Artist Name</label>
                   <input type="text" className="form-input" name={`featured_artists[${i}][name]`} placeholder="Featured artist name" value={a.name} onChange={(e) => updateFeaturedArtist(a.key, 'name', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Spotify Link <span className="opt-tag">(optional)</span></label>
+                <div className="form-group"><label className="form-label">Spotify Profile Link <span className="opt-tag">(optional)</span></label>
                   <input type="url" className="form-input" name={`featured_artists[${i}][spotify]`} placeholder="https://open.spotify.com/artist/..." value={a.spotify} onChange={(e) => updateFeaturedArtist(a.key, 'spotify', e.target.value)} /></div>
-                <div className="form-group"><label className="form-label">Apple Music Link <span className="opt-tag">(optional)</span></label>
+                <div className="form-group"><label className="form-label">Apple Music Profile Link <span className="opt-tag">(optional)</span></label>
                   <input type="url" className="form-input" name={`featured_artists[${i}][apple_music]`} placeholder="https://music.apple.com/artist/..." value={a.apple_music} onChange={(e) => updateFeaturedArtist(a.key, 'apple_music', e.target.value)} /></div>
               </div>
             </div>

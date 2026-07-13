@@ -31,7 +31,7 @@ export default function Profile() {
 
   const [form, setForm] = useState({
     fullName: '', artistName: '', email: '', phone: '', dob: '',
-    gender: '', city: '', state: '', bio: '', spotify: '', instagram: '', youtube: '',
+    gender: '', city: '', state: '', bio: '', spotify: '', appleMusicUrl: '', instagram: '', youtube: '',
   })
 
   const [errors, setErrors] = useState({})
@@ -54,6 +54,7 @@ export default function Profile() {
           state: p.state || '',
           bio: p.bio || '',
           spotify: p.spotify_url || '',
+          appleMusicUrl: p.apple_music_url || '',
           instagram: p.instagram || '',
           youtube: p.youtube_url || '',
         }))
@@ -97,6 +98,7 @@ export default function Profile() {
         state: form.state,
         bio: form.bio,
         spotify_url: form.spotify,
+        apple_music_url: form.appleMusicUrl,
         instagram: form.instagram,
         youtube_url: form.youtube,
       })
@@ -227,6 +229,12 @@ export default function Profile() {
           <div className="pf-form-group">
             <label className="pf-form-label">Spotify Profile URL</label>
             <input type="url" className="pf-form-input" value={form.spotify} onChange={set('spotify')} placeholder="https://open.spotify.com/artist/..." />
+          </div>
+
+          {/* Apple Music */}
+          <div className="pf-form-group">
+            <label className="pf-form-label">Apple Music Profile URL</label>
+            <input type="url" className="pf-form-input" value={form.appleMusicUrl} onChange={set('appleMusicUrl')} placeholder="https://music.apple.com/artist/..." />
           </div>
 
           {/* Instagram */}

@@ -120,6 +120,7 @@ function AdminSidebar({ active, onNav, onLock }) {
     { id: 'profile-mismatch', label: 'Profile Mismatch', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> },
     { id: 'claim-removal', label: 'Claim Removal', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
     { id: 'insta-link', label: 'Insta Link', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg> },
+    { id: 'new-artist', label: 'New Artist Updates', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> },
   ]
 
   return (
@@ -460,6 +461,135 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
   )
 }
 
+// ── New Artist Updates view ─────────────────────────────────────────────────
+function NewArtistView({ secret, onSessionExpired }) {
+  const [entries, setEntries] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [selected, setSelected] = useState(null)
+  const [spotify, setSpotify] = useState('')
+  const [apple, setApple] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const fetchEntries = useCallback(async () => {
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(`${BASE}/admin/new-artist-queue`, { headers: { 'X-Admin-Secret': secret } })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail || `Error ${res.status}`) }
+      const data = await res.json()
+      setEntries(data.entries || [])
+    } catch (e) { setError(e.message) }
+    finally { setLoading(false) }
+  }, [secret, onSessionExpired])
+
+  useEffect(() => { fetchEntries() }, [fetchEntries])
+
+  const openEntry = (entry) => { setSelected(entry); setSpotify(entry.spotify_url || ''); setApple(entry.apple_music_url || '') }
+
+  const submitUpdate = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`${BASE}/admin/new-artist-queue/${selected.id}`, {
+        method: 'PATCH',
+        headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spotify_url: spotify, apple_music_url: apple }),
+      })
+      if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail || 'Update failed') }
+      setEntries((prev) => {
+        const updated = prev.map((e) => e.id === selected.id ? { ...e, status: 'updated', spotify_url: spotify, apple_music_url: apple } : e)
+        return [...updated.filter((e) => e.status === 'pending'), ...updated.filter((e) => e.status !== 'pending')]
+      })
+      setSelected(null)
+    } catch (e) { alert(e.message) }
+    finally { setSaving(false) }
+  }
+
+  const pending = entries.filter((e) => e.status === 'pending').length
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '1.5rem 1.75rem 1rem', borderBottom: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h2 style={{ color: '#f0f0f0', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>New Artist Updates</h2>
+          <p style={{ color: '#555', margin: '.2rem 0 0', fontSize: '.82rem' }}>
+            {loading ? 'Loading…' : <>{entries.length} total{pending > 0 && <span style={{ color: '#fbbf24', marginLeft: 6 }}>· {pending} pending</span>}</>}
+          </p>
+        </div>
+        <button onClick={fetchEntries} disabled={loading} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.55rem .8rem', color: '#9ca3af', cursor: 'pointer', fontSize: '.82rem', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflow: 'auto', padding: '1.25rem 1.75rem' }}>
+        {error && <div style={{ background: '#2d0a0a', border: '1px solid #7f1d1d', borderRadius: 9, padding: '.875rem 1rem', color: '#f87171', fontSize: '.85rem', marginBottom: '1rem' }}>Error: {error}</div>}
+        {loading ? <div style={{ textAlign: 'center', color: '#555', paddingTop: '3rem' }}>Loading…</div>
+          : entries.length === 0 ? <div style={{ textAlign: 'center', color: '#555', paddingTop: '3rem' }}>No new artists in queue.</div>
+          : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {entries.map((entry) => {
+                const done = entry.status === 'updated'
+                return (
+                  <div key={entry.id} onClick={() => openEntry(entry)}
+                    style={{ background: done ? '#0d0d0d' : '#111', border: `1px solid ${done ? '#161616' : '#1f1f1f'}`, borderRadius: 10, padding: '1rem 1.1rem', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', opacity: done ? 0.5 : 1, filter: done ? 'grayscale(0.4)' : 'none', transition: 'all .15s' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = done ? '#111' : '#161616' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = done ? '#0d0d0d' : '#111' }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: avatarColor(entry.user_email), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '.82rem' }}>
+                      {initials(entry.user_email)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: done ? '#6b7280' : '#f0f0f0', fontWeight: 500, fontSize: '.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.artist_name || '(no name)'}</div>
+                      <div style={{ color: '#555', fontSize: '.78rem', marginTop: 2 }}>{entry.user_email}</div>
+                    </div>
+                    {done
+                      ? <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: '#052e16', color: '#4ade80', border: '1px solid #166534' }}>Updated</span>
+                      : <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: '#1c1002', color: '#fbbf24', border: '1px solid #92400e' }}>Pending</span>}
+                    <div style={{ color: '#555', fontSize: '.78rem' }}>{fmtDate(entry.created_at)}</div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3a3a3a" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+      </div>
+
+      {/* Detail modal */}
+      {selected && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setSelected(null)}>
+          <div style={{ background: '#111', border: '1px solid #1f1f1f', borderRadius: 14, width: '100%', maxWidth: 480, overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ color: '#f0f0f0', fontWeight: 700, fontSize: '1rem' }}>{selected.artist_name}</div>
+                <div style={{ color: '#6b7280', fontSize: '.82rem', marginTop: 2 }}>{selected.user_email}</div>
+              </div>
+              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.3rem' }}>✕</button>
+            </div>
+            <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', color: '#9ca3af', fontSize: '.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Spotify Profile URL</label>
+                <input type="url" value={spotify} onChange={(e) => setSpotify(e.target.value)} placeholder="https://open.spotify.com/artist/..."
+                  style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '.65rem .9rem', color: '#f0f0f0', fontSize: '.88rem', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#9ca3af', fontSize: '.78rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>Apple Music Profile URL</label>
+                <input type="url" value={apple} onChange={(e) => setApple(e.target.value)} placeholder="https://music.apple.com/artist/..."
+                  style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '.65rem .9rem', color: '#f0f0f0', fontSize: '.88rem', outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #1a1a1a', display: 'flex', gap: 10 }}>
+              <button onClick={submitUpdate} disabled={saving || (!spotify && !apple)}
+                style={{ flex: 1, padding: '.7rem', borderRadius: 8, border: '1px solid #166534', background: saving ? '#1a1a1a' : '#052e16', color: saving ? '#555' : '#4ade80', fontWeight: 700, fontSize: '.9rem', cursor: saving ? 'default' : 'pointer' }}>
+                {saving ? 'Saving…' : 'Update Artist Profile'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Root ────────────────────────────────────────────────────────────────────
 const SUBMISSION_VIEWS = [
   { id: 'songs',           title: 'Songs' },
@@ -487,6 +617,7 @@ export default function SecretPanel() {
       <AdminSidebar active={activeNav} onNav={setActiveNav} onLock={handleLock} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {activeNav === 'users' && <UsersView secret={secret} onSessionExpired={handleLock} />}
+        {activeNav === 'new-artist' && <NewArtistView secret={secret} onSessionExpired={handleLock} />}
         {subView && (
           <SubmissionsView key={subView.id} secret={secret} category={subView.id} title={subView.title} onSessionExpired={handleLock} />
         )}

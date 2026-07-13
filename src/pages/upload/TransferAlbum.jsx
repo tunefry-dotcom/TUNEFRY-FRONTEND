@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../../styles/transfer-album.css';
 import { useAuth } from '../../context/AuthContext';
+import { getProfile, updateProfile } from '../../lib/profile';
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
@@ -65,6 +66,9 @@ function makeSong() {
 export default function TransferAlbum() {
   const { user } = useAuth();
   const maxArtists = planMaxArtists(user?.plan);
+  const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })();
+  const [isNewArtist, setIsNewArtist] = useState(false);
+  const [artistLinkError, setArtistLinkError] = useState('');
 
   const [upcCode, setUpcCode] = useState('');
   const [albumIsrc, setAlbumIsrc] = useState('');
@@ -191,6 +195,18 @@ export default function TransferAlbum() {
     updateSong(songId, { audioFileName: label });
   }
 
+  // Prefill first song's first main artist from profile on mount
+  useEffect(() => {
+    getProfile().then((p) => {
+      if (p.artist_name || p.spotify_url || p.apple_music_url) {
+        setSongs((prev) => prev.map((s, idx) => idx === 0 ? {
+          ...s,
+          mainArtists: [{ id: 'artist-prefill', name: p.artist_name || '', spotify: p.spotify_url || '', apple: p.apple_music_url || '', instagram: '' }],
+        } : s));
+      }
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function sanitizeTime(v) {
     return v.replace(/[^0-9:]/g, '');
   }
@@ -214,6 +230,12 @@ export default function TransferAlbum() {
       if (!bad) { nameRef.current && nameRef.current.focus(); bad = true; }
     }
     if (bad) return;
+    const firstArtist = songs[0]?.mainArtists?.[0];
+    if (!isNewArtist && firstArtist) {
+      if (!firstArtist.spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return; }
+      if (!firstArtist.apple?.trim()) { setArtistLinkError('Apple Music Profile Link is required for the main artist.'); return; }
+    }
+    setArtistLinkError('');
     if (!ownershipCheck || !migrationCheck) {
       setTermsHighlight(true);
       setTimeout(() => setTermsHighlight(false), 2500);
@@ -273,6 +295,7 @@ export default function TransferAlbum() {
      *   4xx/5xx -> { message: string }
      * ================================================================ */
     fd.append('submission_type', 'transfer_album')
+    if (isNewArtist) fd.append('new_artist', 'true');
     fetch(`${BASE}/submissions/album`, {
       method: 'POST',
       body: fd,
@@ -280,6 +303,13 @@ export default function TransferAlbum() {
     })
       .then((res) => (res.ok ? res.json() : res.json().then((e) => { throw e; })))
       .then(() => {
+        const fa = songs[0]?.mainArtists?.[0];
+        if (!isNewArtist && fa?.spotify) {
+          updateProfile({ spotify_url: fa.spotify, apple_music_url: fa.apple || '' }).catch(() => {});
+        }
+        if (isNewArtist) {
+          try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used'); } catch { /* private */ }
+        }
         setToastVisible(true);
         setSubmitting(false);
         setTimeout(() => setToastVisible(false), 4000);
@@ -320,7 +350,7 @@ export default function TransferAlbum() {
           </div>
           <div className="form-group">
             <label className="form-label">
-              Spotify Link <span className="opt-tag">(optional)</span>
+              Spotify Profile Link <span className="opt-tag">(optional)</span>
             </label>
             <input
               type="url"
@@ -332,7 +362,7 @@ export default function TransferAlbum() {
           </div>
           <div className="form-group">
             <label className="form-label">
-              Apple Music Link <span className="opt-tag">(optional)</span>
+              Apple Music Profile Link <span className="opt-tag">(optional)</span>
             </label>
             <input
               type="url"
@@ -914,6 +944,20 @@ export default function TransferAlbum() {
           {songs.map((song, i) => renderSong(song, i))}
         </div>
         <button type="button" className="add-song-btn" onClick={addSong}>+ Add Another Song</button>
+
+        {(songs[0]?.mainArtists?.[0]?.spotify || songs[0]?.mainArtists?.[0]?.apple) && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>These Spotify and Apple Music profile links will be <strong>permanently saved</strong> to your Tunefry profile.</p>
+          </div>
+        )}
+        {!newArtistUsed && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <input type="checkbox" checked={isNewArtist} onChange={(e) => setIsNewArtist(e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+            I don't have a Spotify or Apple Music profile yet <span style={{ color: 'var(--text-muted)' }}>(new artist)</span>
+          </label>
+        )}
+        {artistLinkError && <p style={{ marginTop: 10, fontSize: 12.5, color: '#f87171', fontWeight: 500 }}>{artistLinkError}</p>}
       </div>
 
       {/* Step 03: Additional Info */}

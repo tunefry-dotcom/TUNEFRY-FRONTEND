@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import '../../styles/transfer-song.css'
 import { useAuth } from '../../context/AuthContext'
+import { getProfile, updateProfile } from '../../lib/profile'
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
@@ -45,6 +46,20 @@ export default function TransferSong() {
   // Artists — each row keeps the exact field set produced by the original addArtist()
   const [mainArtists, setMainArtists] = useState([{ name: '', spotify: '', apple_music: '', instagram: '' }])
   const [featuredArtists, setFeaturedArtists] = useState([])
+
+  // New-artist / profile prefill
+  const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })()
+  const [isNewArtist, setIsNewArtist] = useState(false)
+  const [artistLinkError, setArtistLinkError] = useState('')
+
+  // Prefill first main artist from profile on mount
+  useEffect(() => {
+    getProfile().then((p) => {
+      if (p.artist_name || p.spotify_url || p.apple_music_url) {
+        setMainArtists([{ name: p.artist_name || '', spotify: p.spotify_url || '', apple_music: p.apple_music_url || '', instagram: '' }])
+      }
+    }).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // File selections
   const [coverArtName, setCoverArtName] = useState('')
@@ -127,6 +142,13 @@ export default function TransferSong() {
     setErrors(newErrors)
     if (bad) return
 
+    // Validate Spotify/Apple links (required unless new artist)
+    if (!isNewArtist && mainArtists[0]) {
+      if (!mainArtists[0].spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return }
+      if (!mainArtists[0].apple_music?.trim()) { setArtistLinkError('Apple Music Profile Link is required for the main artist.'); return }
+    }
+    setArtistLinkError('')
+
     if (!guidelinesCheck || !termsCheck) {
       setCheckError(true)
       setTimeout(() => setCheckError(false), 2300)
@@ -188,6 +210,7 @@ export default function TransferSong() {
      *   4xx/5xx -> { message: string }
      * ================================================================ */
     fd.append('submission_type', 'transfer_song')
+    if (isNewArtist) fd.append('new_artist', 'true')
     fetch(`${BASE}/submissions/song`, {
       method: 'POST',
       body: fd,
@@ -197,6 +220,12 @@ export default function TransferSong() {
       .then(() => {
         if (user?.plan === 'single-song') {
           try { localStorage.setItem(`tf_single_used_${user.id}`, '1') } catch { /* private */ }
+        }
+        if (!isNewArtist && mainArtists[0]?.spotify) {
+          updateProfile({ spotify_url: mainArtists[0].spotify, apple_music_url: mainArtists[0].apple_music || '' }).catch(() => {})
+        }
+        if (isNewArtist) {
+          try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used') } catch { /* private */ }
         }
         setToastVisible(true)
         setSubmitting(false)
@@ -299,11 +328,11 @@ export default function TransferSong() {
                   <input className="form-input" type="text" placeholder="Main artist name" value={artist.name} onChange={(e) => updateMainArtist(i, 'name', e.target.value)} style={i === 0 ? markStyle('mainArtist0') : undefined} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Spotify Link <span className="opt-tag">(optional)</span></label>
+                  <label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
                   <input className="form-input" type="url" placeholder="https://open.spotify.com/artist/..." value={artist.spotify} onChange={(e) => updateMainArtist(i, 'spotify', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Apple Music Link <span className="opt-tag">(optional)</span></label>
+                  <label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
                   <input className="form-input" type="url" placeholder="https://music.apple.com/artist/..." value={artist.apple_music} onChange={(e) => updateMainArtist(i, 'apple_music', e.target.value)} />
                 </div>
                 <div className="form-group col-span-2">
@@ -314,6 +343,21 @@ export default function TransferSong() {
             </div>
           ))}
         </div>
+
+        {/* Permanent save notice */}
+        {(mainArtists[0]?.spotify || mainArtists[0]?.apple_music) && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>These Spotify and Apple Music profile links will be <strong>permanently saved</strong> to your Tunefry profile.</p>
+          </div>
+        )}
+        {!newArtistUsed && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+            <input type="checkbox" checked={isNewArtist} onChange={(e) => setIsNewArtist(e.target.checked)} style={{ width: 15, height: 15, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+            I don't have a Spotify or Apple Music profile yet <span style={{ color: 'var(--text-muted)' }}>(new artist)</span>
+          </label>
+        )}
+        {artistLinkError && <p style={{ marginTop: 10, fontSize: 12.5, color: '#f87171', fontWeight: 500 }}>{artistLinkError}</p>}
       </div>
 
       {/* Featured Artists */}
@@ -341,11 +385,11 @@ export default function TransferSong() {
                   <input className="form-input" type="text" placeholder="Featured artist name" value={artist.name} onChange={(e) => updateFeaturedArtist(i, 'name', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Spotify Link <span className="opt-tag">(optional)</span></label>
+                  <label className="form-label">Spotify Profile Link <span className="opt-tag">(optional)</span></label>
                   <input className="form-input" type="url" placeholder="https://open.spotify.com/artist/..." value={artist.spotify} onChange={(e) => updateFeaturedArtist(i, 'spotify', e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Apple Music Link <span className="opt-tag">(optional)</span></label>
+                  <label className="form-label">Apple Music Profile Link <span className="opt-tag">(optional)</span></label>
                   <input className="form-input" type="url" placeholder="https://music.apple.com/artist/..." value={artist.apple_music} onChange={(e) => updateFeaturedArtist(i, 'apple_music', e.target.value)} />
                 </div>
               </div>
