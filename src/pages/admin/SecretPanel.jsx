@@ -244,6 +244,30 @@ function UsersView({ secret, onSessionExpired }) {
 }
 
 // ── Submission detail modal ─────────────────────────────────────────────────
+function DownloadButton({ label, r2key, secret }) {
+  const [fetching, setFetching] = useState(false)
+  const download = async () => {
+    if (!r2key) return
+    setFetching(true)
+    try {
+      const res = await fetch(`${BASE}/admin/media/download-url?key=${encodeURIComponent(r2key)}`, { headers: { 'X-Admin-Secret': secret } })
+      if (!res.ok) { const b = await res.json().catch(() => ({})); alert(b.detail || 'Could not get download URL'); return }
+      const { url } = await res.json()
+      window.open(url, '_blank', 'noopener')
+    } catch { alert('Network error') }
+    finally { setFetching(false) }
+  }
+  return (
+    <button onClick={download} disabled={fetching}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '.45rem .85rem', borderRadius: 7, border: '1px solid #2a2a2a', background: '#1a1a1a', color: fetching ? '#555' : '#9ca3af', fontSize: '.78rem', cursor: fetching ? 'default' : 'pointer', transition: 'all .15s' }}
+      onMouseEnter={(e) => { if (!fetching) { e.currentTarget.style.borderColor = '#ff6b2b'; e.currentTarget.style.color = '#ff6b2b' } }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.color = fetching ? '#555' : '#9ca3af' }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      {fetching ? 'Generating…' : label}
+    </button>
+  )
+}
+
 function DetailModal({ sub, secret, onClose, onReviewed }) {
   const [loading, setLoading] = useState(false)
 
@@ -315,6 +339,27 @@ function DetailModal({ sub, secret, onClose, onReviewed }) {
             })}
           </div>
         </div>
+
+        {/* File Downloads */}
+        {(() => {
+          const d = sub.data || {}
+          const coverKey = d.cover_art_key
+          const audioKey = d.audio_key
+          // For albums: collect per-track audio keys from songs array
+          const songs = Array.isArray(d.songs) ? d.songs : []
+          const trackKeys = songs.map((s, i) => s.audio_key ? { label: `Track ${i + 1}`, key: s.audio_key } : null).filter(Boolean)
+          if (!coverKey && !audioKey && trackKeys.length === 0) return null
+          return (
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #1a1a1a' }}>
+              <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Files</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {coverKey && <DownloadButton label="Cover Art" r2key={coverKey} secret={secret} />}
+                {audioKey && <DownloadButton label="Audio" r2key={audioKey} secret={secret} />}
+                {trackKeys.map((t) => <DownloadButton key={t.key} label={t.label} r2key={t.key} secret={secret} />)}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Actions */}
         {sub.status === 'pending' && (

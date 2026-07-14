@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import '../../styles/new-album.css'
 import { useAuth } from '../../context/AuthContext'
 import { getProfile, updateProfile } from '../../lib/profile'
+import { validateCoverArt, validateAudioFile, uploadToR2 } from '../../lib/r2upload'
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
@@ -36,6 +37,8 @@ function makeSong() {
     originalReleaseDate: '',
     goLiveDate: '',
     audioName: '',
+    audioFile: null,   // File object for R2 upload
+    audioError: '',
     ytCid: false,
     genre: '',
     subGenre: '',
@@ -73,6 +76,9 @@ export default function NewAlbum() {
   const [additionalComments, setAdditionalComments] = useState('')
   const [coverPreview, setCoverPreview] = useState('')
   const [coverDragOver, setCoverDragOver] = useState(false)
+  const [coverFile, setCoverFile] = useState(null)
+  const [coverError, setCoverError] = useState('')
+  const [uploadStatus, setUploadStatus] = useState('')
   const [songs, setSongs] = useState([makeSong()])
   const [guidelinesCheck, setGuidelinesCheck] = useState(false)
   const [rightsCheck, setRightsCheck] = useState(false)
@@ -156,39 +162,55 @@ export default function NewAlbum() {
     }).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const selectCover = async (file) => {
+    if (!file) return
+    showCover(file)
+    try {
+      await validateCoverArt(file)
+      setCoverFile(file)
+      setCoverError('')
+    } catch (err) {
+      setCoverFile(null)
+      setCoverError(String(err))
+      setCoverPreview('')
+      if (coverInputRef.current) coverInputRef.current.value = ''
+    }
+  }
+
   const handleCover = (e) => {
     const files = e.target.files
-    if (files && files[0]) showCover(files[0])
+    if (files && files[0]) selectCover(files[0])
   }
 
   const coverDrop = (e) => {
     e.preventDefault()
     setCoverDragOver(false)
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) showCover(e.dataTransfer.files[0])
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) selectCover(e.dataTransfer.files[0])
   }
 
   const handleSongAudio = (key, e) => {
     const file = e.target.files[0]
     if (!file) return
+    const err = validateAudioFile(file)
+    if (err) { updateSong(key, { audioFile: null, audioName: '', audioError: err }); return }
     const label = '✓ ' + (file.name.length > 30 ? file.name.substring(0, 28) + '…' : file.name)
-    updateSong(key, { audioName: label })
+    updateSong(key, { audioFile: file, audioName: label, audioError: '' })
   }
 
-  const submitAlbum = () => {
+  const submitAlbum = async () => {
     if (!albumName.trim()) {
       if (albumNameRef.current) albumNameRef.current.focus()
       setAlbumNameStyle({ borderColor: 'var(--accent)', boxShadow: '0 0 0 3px rgba(242,101,34,0.18)' })
       setTimeout(() => setAlbumNameStyle({}), 2200)
       return
     }
-    // Validate first song first main artist spotify/apple (required unless new artist)
+    if (!coverFile) { setCoverError('Cover art is required.'); return }
     const firstArtist = songs[0]?.mainArtists?.[0]
     if (!isNewArtist && firstArtist) {
       if (!firstArtist.spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return }
       if (!firstArtist.apple?.trim()) { setArtistLinkError('Apple Music Profile Link is required for the main artist.'); return }
     }
     setArtistLinkError('')
-
     if (!guidelinesCheck || !rightsCheck) {
       setTermsError(true)
       setTimeout(() => setTermsError(false), 2500)
@@ -197,8 +219,35 @@ export default function NewAlbum() {
 
     setSubmitting(true)
 
+    const artistName = songs[0]?.mainArtists?.[0]?.name || user?.artist_name || ''
+    const releaseName = albumName.trim()
+    let coverKey = ''
+    const trackKeys = {}
+
+    try {
+      setUploadStatus('Uploading cover art…')
+      coverKey = await uploadToR2(coverFile, { artistName, releaseName, fileType: 'cover_art' }, () => {})
+
+      for (let i = 0; i < songs.length; i++) {
+        const s = songs[i]
+        if (s.audioFile) {
+          setUploadStatus(`Uploading track ${i + 1} of ${songs.length}…`)
+          trackKeys[s.key] = await uploadToR2(
+            s.audioFile,
+            { artistName, releaseName, fileType: 'audio', trackNumber: i + 1 },
+            () => {},
+          )
+        }
+      }
+      setUploadStatus('Submitting…')
+    } catch (err) {
+      alert(`File upload failed: ${err.message}`)
+      setSubmitting(false); setUploadStatus(''); return
+    }
+
     const collectedSongs = songs.map((s, idx) => ({
       index: idx + 1,
+      audio_key: trackKeys[s.key] || '',
       main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
     }))
 
@@ -207,25 +256,7 @@ export default function NewAlbum() {
     fd.append('songs', JSON.stringify(collectedSongs))
     fd.append('album_description', albumDescription.trim())
     fd.append('additional_comments', additionalComments.trim())
-    const coverInput = coverInputRef.current
-    if (coverInput && coverInput.files[0]) fd.append('cover_art', coverInput.files[0])
-
-    /* ===== BACKEND CONTRACT =========================================
-     * POST /api/release/album/new
-     * Content-Type: multipart/form-data  (set automatically by browser)
-     * Auth: session cookie (credentials: 'include')
-     *
-     * Text fields: album_name, album_description, additional_comments
-     * JSON-encoded text field:
-     *   songs = [{ title, duration, genre, producer, composer,
-     *              lyricist, callertune_time, callertune_name,
-     *              main_artists:[{name, spotify}], audio_filename }]
-     *   NOTE: each song's audio file is appended separately as
-     *         `audio_<sid>` in the same FormData (see code above).
-     * File fields:
-     *   cover_art       (image/*, required)
-     *   audio_<sid>     (.wav/.flac/.mp3, one per song)
-     * ================================================================ */
+    fd.append('cover_art_key', coverKey)
     fd.append('submission_type', 'new_album')
     if (isNewArtist) fd.append('new_artist', 'true')
     fetch(`${BASE}/submissions/album`, {
@@ -242,12 +273,12 @@ export default function NewAlbum() {
         if (isNewArtist) {
           try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used') } catch { /* private */ }
         }
-        setSubmitting(false)
+        setSubmitting(false); setUploadStatus('')
         navigate('/', { state: { successMsg: 'New Album Submission' } })
       })
       .catch((err) => {
         alert(err && err.message ? err.message : 'Submission failed. Please try again.')
-        setSubmitting(false)
+        setSubmitting(false); setUploadStatus('')
       })
   }
 
@@ -316,12 +347,19 @@ export default function NewAlbum() {
             onDragLeave={() => setCoverDragOver(false)}
             onDrop={coverDrop}
           >
-            <input ref={coverInputRef} type="file" id="coverInput" name="cover_art" accept="image/*" onChange={handleCover} />
+            <input ref={coverInputRef} type="file" id="coverInput" name="cover_art" accept="image/jpeg,image/png" onChange={handleCover} />
             <div className="drop-zone-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
             <div className="drop-zone-text">Drop album cover here</div>
-            <div className="drop-zone-sub">JPEG or PNG<br/>Minimum 3000 × 3000 px</div>
+            <div className="drop-zone-sub">JPEG or PNG — must be exactly 3000 × 3000 px</div>
           </div>
         </div>
+        {coverError && <p style={{ marginTop: 8, fontSize: '12px', color: '#f87171', fontWeight: 500 }}>{coverError}</p>}
+        {coverFile && !coverError && <p style={{ marginTop: 8, fontSize: '12px', color: '#4ade80' }}>✓ 3000×3000 px verified</p>}
+        {submitting && uploadStatus && (
+          <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(99,102,241,0.08)', border: '0.5px solid rgba(99,102,241,0.25)', borderRadius: 9, fontSize: '12px', color: '#818cf8', fontWeight: 600 }}>
+            {uploadStatus}
+          </div>
+        )}
       </div>
 
       {/* Step 02: Songs */}
@@ -474,12 +512,13 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
             <input type="date" className="form-input" style={{ colorScheme: 'dark' }} value={song.goLiveDate} onChange={(e) => updateSong(song.key, { goLiveDate: e.target.value })} /></div>
         </div>
         <div className="form-group" style={{ marginTop: '16px' }}><label className="form-label">Audio File <span className="req">*</span></label>
-          <div className="drop-zone" style={{ height: '76px', flexDirection: 'row', gap: '14px', padding: '0 20px' }} onClick={() => audioRef.current && audioRef.current.click()}>
-            <input ref={audioRef} type="file" accept=".wav,.flac,.mp3" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} onChange={(e) => handleSongAudio(song.key, e)} />
+          <div className="drop-zone" style={{ height: '76px', flexDirection: 'row', gap: '14px', padding: '0 20px', borderColor: song.audioError ? '#f87171' : song.audioFile ? 'rgba(34,197,94,0.4)' : undefined }} onClick={() => audioRef.current && audioRef.current.click()}>
+            <input ref={audioRef} type="file" accept=".wav,.flac,.mp3,audio/wav,audio/mpeg,audio/flac" style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }} onChange={(e) => handleSongAudio(song.key, e)} />
             <div className="drop-zone-icon" style={{ width: '30px', height: '30px', flexShrink: 0 }}><svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg></div>
-            <div><div className="drop-zone-text" style={{ fontSize: '12px', textAlign: 'left' }}>{song.audioName || 'Drop audio or click to upload'}</div>
-              <div className="drop-zone-sub" style={{ textAlign: 'left' }}>WAV, FLAC or MP3</div></div>
+            <div><div className="drop-zone-text" style={{ fontSize: '12px', textAlign: 'left', color: song.audioFile ? '#4ade80' : undefined }}>{song.audioName || 'Drop audio or click to upload'}</div>
+              <div className="drop-zone-sub" style={{ textAlign: 'left' }}>WAV, MP3, or FLAC only</div></div>
           </div>
+          {song.audioError && <p style={{ marginTop: 5, fontSize: '11px', color: '#f87171', fontWeight: 500 }}>{song.audioError}</p>}
         </div>
         <div className="form-grid" style={{ marginTop: '16px' }}>
           <div className="form-group"><label className="form-label">YouTube Content ID <span className="req">*</span></label>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../../styles/new-song.css';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../lib/profile';
+import { validateCoverArt, validateAudioFile, uploadToR2 } from '../../lib/r2upload';
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
@@ -157,6 +158,12 @@ export default function NewSong() {
   const audioInputRef = useRef(null);
   const [coverDragOver, setCoverDragOver] = useState(false);
   const [audioDragOver, setAudioDragOver] = useState(false);
+  // R2 upload state
+  const [coverArtFile, setCoverArtFile] = useState(null);
+  const [audioFile, setAudioFile] = useState(null);
+  const [fileErrors, setFileErrors] = useState({ cover: '', audio: '' });
+  const [uploadStatus, setUploadStatus] = useState(''); // label shown during upload
+  const [uploadProgress, setUploadProgress] = useState({ cover: 0, audio: 0 });
 
   // Label name
   const [customAllowed] = useState(isCustomLabelAllowed());
@@ -263,23 +270,52 @@ export default function NewSong() {
     else setAudioSize('');
   }, []);
 
+  const selectCoverArt = useCallback(async (file) => {
+    if (!file) return;
+    showCoverArtPreview(file); // show preview immediately
+    try {
+      await validateCoverArt(file);
+      setCoverArtFile(file);
+      setFileErrors((p) => ({ ...p, cover: '' }));
+    } catch (err) {
+      setCoverArtFile(null);
+      setCoverPreview(null);
+      setFileErrors((p) => ({ ...p, cover: String(err) }));
+      if (coverInputRef.current) coverInputRef.current.value = '';
+    }
+  }, [showCoverArtPreview]);
+
+  const selectAudioFile = useCallback((file) => {
+    if (!file) return;
+    const err = validateAudioFile(file);
+    if (err) {
+      setAudioFile(null);
+      setAudioSelected(false);
+      setFileErrors((p) => ({ ...p, audio: err }));
+      if (audioInputRef.current) audioInputRef.current.value = '';
+      return;
+    }
+    setAudioFile(file);
+    setFileErrors((p) => ({ ...p, audio: '' }));
+    showAudioFileName(file.name, file.size);
+  }, [showAudioFileName]);
+
   const handleCoverArt = (input) => {
-    if (input.files && input.files[0]) showCoverArtPreview(input.files[0]);
+    if (input.files && input.files[0]) selectCoverArt(input.files[0]);
   };
   const handleAudioFile = (input) => {
-    if (input.files && input.files[0]) showAudioFileName(input.files[0].name, input.files[0].size);
+    if (input.files && input.files[0]) selectAudioFile(input.files[0]);
   };
 
   const handleCoverDrop = (e) => {
     e.preventDefault();
     setCoverDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) showCoverArtPreview(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) selectCoverArt(e.dataTransfer.files[0]);
   };
   const handleAudioDrop = (e) => {
     e.preventDefault();
     setAudioDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0])
-      showAudioFileName(e.dataTransfer.files[0].name, e.dataTransfer.files[0].size);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) selectAudioFile(e.dataTransfer.files[0]);
   };
 
   const handleGenreChange = (e) => {
@@ -291,7 +327,7 @@ export default function NewSong() {
   const subcatOptions = currentGenreText ? SUBCATS[currentGenreText] : null;
   const subDisabled = !subcatOptions;
 
-  const submitRelease = () => {
+  const submitRelease = async () => {
     if (!songTitle.trim()) {
       setTitleError(true);
       if (titleRef.current) titleRef.current.focus();
@@ -302,20 +338,54 @@ export default function NewSong() {
       setArtistLinkError('Please provide the YouTube beat/sample link.');
       return;
     }
-    // Validate Spotify/Apple links for the first main artist (required unless new artist)
     if (!isNewArtist && mainArtists.length > 0) {
-      const first = mainArtists[0]
-      if (!first.spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return }
-      if (!first.apple_music?.trim()) { setArtistLinkError('Apple Music Profile Link is required for the main artist.'); return }
+      const first = mainArtists[0];
+      if (!first.spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return; }
+      if (!first.apple_music?.trim()) { setArtistLinkError('Apple Music Profile Link is required for the main artist.'); return; }
     }
-    setArtistLinkError('')
+    setArtistLinkError('');
     if (!guidelinesCheck || !rightsCheck) {
       setTermsError(true);
       setTimeout(() => setTermsError(false), 2500);
       return;
     }
+    // Require both files
+    if (!coverArtFile) {
+      setFileErrors((p) => ({ ...p, cover: 'Cover art is required.' }));
+      return;
+    }
+    if (!audioFile) {
+      setFileErrors((p) => ({ ...p, audio: 'Audio file is required.' }));
+      return;
+    }
 
     setSubmitting(true);
+    setUploadProgress({ cover: 0, audio: 0 });
+
+    const artistName = mainArtists[0]?.name || user?.artist_name || '';
+    const releaseName = songTitle.trim();
+    let coverKey = '', audioKey = '';
+
+    try {
+      setUploadStatus('Uploading cover art…');
+      coverKey = await uploadToR2(
+        coverArtFile,
+        { artistName, releaseName, fileType: 'cover_art' },
+        (pct) => setUploadProgress((p) => ({ ...p, cover: pct })),
+      );
+      setUploadStatus('Uploading audio…');
+      audioKey = await uploadToR2(
+        audioFile,
+        { artistName, releaseName, fileType: 'audio' },
+        (pct) => setUploadProgress((p) => ({ ...p, audio: pct })),
+      );
+      setUploadStatus('Submitting…');
+    } catch (err) {
+      alert(`File upload failed: ${err.message}`);
+      setSubmitting(false);
+      setUploadStatus('');
+      return;
+    }
 
     const mainArtistsPayload = mainArtists.map((a) => ({
       name: a.name || '',
@@ -354,10 +424,8 @@ export default function NewSong() {
     else if (savedLabel) labelValue = labelSelectValue.trim();
     else labelValue = labelSetupValue.trim();
     if (labelValue) fd.append('label_name', labelValue);
-    if (coverInputRef.current && coverInputRef.current.files[0])
-      fd.append('cover_art', coverInputRef.current.files[0]);
-    if (audioInputRef.current && audioInputRef.current.files[0])
-      fd.append('audio_file', audioInputRef.current.files[0]);
+    fd.append('cover_art_key', coverKey);
+    fd.append('audio_key', audioKey);
     fd.append('submission_type', 'new_song');
     if (isNewArtist) fd.append('new_artist', 'true');
 
@@ -369,22 +437,22 @@ export default function NewSong() {
       .then((res) => (res.ok ? res.json() : res.json().then((e) => { throw e; })))
       .then(() => {
         if (user?.plan === 'single-song') {
-          try { localStorage.setItem(`tf_single_used_${user.id}`, '1') } catch { /* private */ }
+          try { localStorage.setItem(`tf_single_used_${user.id}`, '1'); } catch { /* private */ }
         }
-        // Save first main artist's links to profile permanently
         if (!isNewArtist && mainArtists[0]?.spotify) {
-          updateProfile({ spotify_url: mainArtists[0].spotify, apple_music_url: mainArtists[0].apple_music || '' }).catch(() => {})
+          updateProfile({ spotify_url: mainArtists[0].spotify, apple_music_url: mainArtists[0].apple_music || '' }).catch(() => {});
         }
-        // Mark new-artist checkbox as used (one-time)
         if (isNewArtist) {
-          try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used') } catch { /* private */ }
+          try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used'); } catch { /* private */ }
         }
         setSubmitting(false);
+        setUploadStatus('');
         navigate('/', { state: { successMsg: 'New Song Submission' } });
       })
       .catch((err) => {
         alert(err && err.message ? err.message : 'Submission failed. Please try again.');
         setSubmitting(false);
+        setUploadStatus('');
       });
   };
 
@@ -725,13 +793,13 @@ export default function NewSong() {
 
           {/* Cover Art */}
           <div>
-            <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Cover Art <span className="opt-tag">(optional)</span></label>
+            <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Cover Art <span className="req">*</span></label>
             <div className={coverDragOver ? 'drop-zone cover-art-zone drag-over' : 'drop-zone cover-art-zone'} id="coverArtZone"
-              style={coverPreview ? { borderStyle: 'solid', borderColor: 'rgba(242,101,34,0.4)' } : undefined}
+              style={coverArtFile ? { borderStyle: 'solid', borderColor: 'rgba(242,101,34,0.4)' } : fileErrors.cover ? { borderColor: '#f87171' } : undefined}
               onDragOver={(e) => { e.preventDefault(); setCoverDragOver(true); }}
               onDragLeave={() => setCoverDragOver(false)}
               onDrop={handleCoverDrop}>
-              <input ref={coverInputRef} type="file" id="coverArtInput" name="cover_art" accept="image/*" onChange={(e) => handleCoverArt(e.target)} />
+              <input ref={coverInputRef} type="file" id="coverArtInput" name="cover_art" accept="image/jpeg,image/png" onChange={(e) => handleCoverArt(e.target)} />
               <img id="coverArtPreview" className={coverPreview ? 'visible' : ''} src={coverPreview || undefined} alt="Cover art preview" />
               {!coverPreview && (
                 <div className="cover-art-inner" id="coverArtContent">
@@ -739,22 +807,28 @@ export default function NewSong() {
                     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
                   </div>
                   <div className="drop-zone-text">Drop cover art here</div>
-                  <div className="drop-zone-sub">JPEG, PNG<br />Min 3000 × 3000 px</div>
+                  <div className="drop-zone-sub">JPEG or PNG only<br />Must be exactly 3000 × 3000 px</div>
                 </div>
               )}
             </div>
+            {fileErrors.cover && (
+              <p style={{ marginTop: 6, fontSize: '12px', color: '#f87171', fontWeight: 500 }}>{fileErrors.cover}</p>
+            )}
+            {coverArtFile && !fileErrors.cover && (
+              <p style={{ marginTop: 6, fontSize: '12px', color: '#4ade80' }}>✓ 3000×3000 px verified</p>
+            )}
           </div>
 
           {/* Right column: Audio */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Audio File <span className="opt-tag">(optional)</span></label>
+              <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>Audio File <span className="req">*</span></label>
               <div className={audioDragOver ? 'drop-zone audio-zone drag-over' : 'drop-zone audio-zone'} id="audioZone"
-                style={audioSelected ? { borderStyle: 'solid', borderColor: 'rgba(34,197,94,0.4)', background: 'rgba(34,197,94,0.05)' } : undefined}
+                style={audioSelected ? { borderStyle: 'solid', borderColor: 'rgba(34,197,94,0.4)', background: 'rgba(34,197,94,0.05)' } : fileErrors.audio ? { borderColor: '#f87171' } : undefined}
                 onDragOver={(e) => { e.preventDefault(); setAudioDragOver(true); }}
                 onDragLeave={() => setAudioDragOver(false)}
                 onDrop={handleAudioDrop}>
-                <input ref={audioInputRef} type="file" id="audioInput" name="audio_file" accept=".wav,.flac,.mp3" onChange={(e) => handleAudioFile(e.target)} />
+                <input ref={audioInputRef} type="file" id="audioInput" name="audio_file" accept=".wav,.flac,.mp3,audio/wav,audio/mpeg,audio/flac" onChange={(e) => handleAudioFile(e.target)} />
                 {!audioSelected && (
                   <div className="audio-inner" id="audioZoneContent">
                     <div className="drop-zone-icon">
@@ -762,19 +836,24 @@ export default function NewSong() {
                     </div>
                     <div>
                       <div className="drop-zone-text" style={{ textAlign: 'left' }}>Drop audio file here</div>
-                      <div className="drop-zone-sub" style={{ textAlign: 'left' }}>.WAV, .MP3, .FLAC — min 16-bit 44.1kHz</div>
+                      <div className="drop-zone-sub" style={{ textAlign: 'left' }}>.WAV, .MP3, .FLAC only — min 16-bit 44.1kHz</div>
                     </div>
                   </div>
                 )}
                 <div id="audioFileName" style={audioSelected ? { display: 'block' } : undefined}>{audioSelected ? '✓ File selected' : ''}</div>
               </div>
+              {fileErrors.audio && (
+                <p style={{ marginTop: 6, fontSize: '12px', color: '#f87171', fontWeight: 500 }}>{fileErrors.audio}</p>
+              )}
             </div>
 
-            <div id="audioFilePill" style={{ display: audioSelected ? 'flex' : 'none', padding: '8px 14px', background: 'rgba(34,197,94,0.1)', border: '0.5px solid rgba(34,197,94,0.3)', borderRadius: '10px', alignItems: 'center', gap: '10px' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              <span id="audioFileNameText" style={{ fontSize: '12px', fontWeight: 600, color: '#22C55E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{audioName}</span>
-              <span id="audioFileSizeText" style={{ fontSize: '11px', color: 'rgba(34,197,94,0.7)', flexShrink: 0 }}>{audioSize}</span>
-            </div>
+            {audioSelected && (
+              <div style={{ display: 'flex', padding: '8px 14px', background: 'rgba(34,197,94,0.1)', border: '0.5px solid rgba(34,197,94,0.3)', borderRadius: '10px', alignItems: 'center', gap: '10px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#22C55E', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{audioName}</span>
+                <span style={{ fontSize: '11px', color: 'rgba(34,197,94,0.7)', flexShrink: 0 }}>{audioSize}</span>
+              </div>
+            )}
 
             <div style={{ padding: '14px 16px', background: 'rgba(242,101,34,0.06)', border: '0.5px solid rgba(242,101,34,0.15)', borderRadius: '12px' }}>
               <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
@@ -844,15 +923,42 @@ export default function NewSong() {
           </span>
         </label>
 
+        {/* Upload progress */}
+        {submitting && uploadStatus && (
+          <div style={{ marginBottom: '16px', padding: '14px 16px', background: 'rgba(99,102,241,0.08)', border: '0.5px solid rgba(99,102,241,0.25)', borderRadius: '12px' }}>
+            <div style={{ fontSize: '12px', color: '#818cf8', fontWeight: 600, marginBottom: 10 }}>{uploadStatus}</div>
+            {uploadProgress.cover > 0 && uploadProgress.cover < 100 && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#555', marginBottom: 4 }}>
+                  <span>Cover art</span><span>{uploadProgress.cover}%</span>
+                </div>
+                <div style={{ height: 4, background: '#1a1a1a', borderRadius: 2 }}>
+                  <div style={{ height: '100%', width: `${uploadProgress.cover}%`, background: 'linear-gradient(90deg,#6366f1,#818cf8)', borderRadius: 2, transition: 'width .2s' }} />
+                </div>
+              </div>
+            )}
+            {uploadProgress.audio > 0 && uploadProgress.audio < 100 && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#555', marginBottom: 4 }}>
+                  <span>Audio</span><span>{uploadProgress.audio}%</span>
+                </div>
+                <div style={{ height: 4, background: '#1a1a1a', borderRadius: 2 }}>
+                  <div style={{ height: '100%', width: `${uploadProgress.audio}%`, background: 'linear-gradient(90deg,#22c55e,#4ade80)', borderRadius: 2, transition: 'width .2s' }} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ marginTop: '28px' }}>
           <button
             onClick={submitRelease}
             disabled={submitting}
-            style={{ width: '100%', padding: '16px', borderRadius: '14px', fontSize: '15px', fontFamily: "'Syne',sans-serif", fontWeight: 800, letterSpacing: '.03em', color: '#fff', background: 'linear-gradient(135deg,#FF8A50,#F26522,#D4520F)', border: 'none', cursor: 'pointer', boxShadow: '0 6px 28px rgba(242,101,34,0.4),inset 0 1px 0 rgba(255,255,255,0.15)', transition: 'opacity .2s,transform .2s' }}
-            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 36px rgba(242,101,34,0.55),inset 0 1px 0 rgba(255,255,255,0.18)'; }}
+            style={{ width: '100%', padding: '16px', borderRadius: '14px', fontSize: '15px', fontFamily: "'Syne',sans-serif", fontWeight: 800, letterSpacing: '.03em', color: '#fff', background: 'linear-gradient(135deg,#FF8A50,#F26522,#D4520F)', border: 'none', cursor: submitting ? 'default' : 'pointer', opacity: submitting ? 0.75 : 1, boxShadow: '0 6px 28px rgba(242,101,34,0.4),inset 0 1px 0 rgba(255,255,255,0.15)', transition: 'opacity .2s,transform .2s' }}
+            onMouseOver={(e) => { if (!submitting) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 36px rgba(242,101,34,0.55),inset 0 1px 0 rgba(255,255,255,0.18)'; } }}
             onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 28px rgba(242,101,34,0.4),inset 0 1px 0 rgba(255,255,255,0.15)'; }}
           >
-            {submitting ? 'Submitting…' : 'Submit Release'}
+            {submitting ? (uploadStatus || 'Submitting…') : 'Submit Release'}
           </button>
           <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px', lineHeight: 1.6 }}>Your submission will be reviewed within 3–5 business days. You'll receive an email confirmation.</p>
         </div>
