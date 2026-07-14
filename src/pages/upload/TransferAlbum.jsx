@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../../styles/transfer-album.css';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../lib/profile';
-import { validateCoverArt, validateAudioFile, uploadToR2 } from '../../lib/r2upload';
+import { validateCoverArt, validateAudioFile } from '../../lib/r2upload';
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
@@ -88,7 +88,6 @@ export default function TransferAlbum() {
   const coverInputRef = useRef(null);
   const [coverFile, setCoverFile] = useState(null);
   const [coverError, setCoverError] = useState('');
-  const [uploadStatus, setUploadStatus] = useState('');
 
   const [songs, setSongs] = useState(() => [makeSong()]);
 
@@ -265,27 +264,16 @@ export default function TransferAlbum() {
       return;
     }
 
-    setSubmitting(true);
-
-    const artistName = songs[0]?.mainArtists?.[0]?.name || user?.artist_name || '';
-    const releaseName = albumName.trim();
-    let coverKey = '';
-    const trackKeys = {};
-    try {
-      setUploadStatus('Uploading cover art…');
-      coverKey = await uploadToR2(coverFile, { artistName, releaseName, fileType: 'cover_art' }, () => {});
-      for (let i = 0; i < songs.length; i++) {
-        const s = songs[i];
-        if (s.audioFile) {
-          setUploadStatus(`Uploading track ${i + 1} of ${songs.length}…`);
-          trackKeys[s.id] = await uploadToR2(s.audioFile, { artistName, releaseName, fileType: 'audio', trackNumber: i + 1 }, () => {});
-        }
-      }
-      setUploadStatus('Submitting…');
-    } catch (err) {
-      alert(`File upload failed: ${err.message}`);
-      setSubmitting(false); setUploadStatus(''); return;
+    // Require audio for every track
+    const missingAudio = songs.findIndex((s) => !s.audioFile);
+    if (missingAudio !== -1) {
+      setSongs((prev) => prev.map((s, idx) =>
+        idx === missingAudio ? { ...s, audioError: 'Audio file is required.' } : s
+      ));
+      return;
     }
+
+    setSubmitting(true);
 
     // Collect songs
     const collected = songs.map((s, idx) => {
@@ -307,7 +295,6 @@ export default function TransferAlbum() {
       song.ytBeat = s.ytBeat;
       song.explicit = s.explicit;
       song.isrcNo = s.isrcNo;
-      song.audio_key = trackKeys[s.id] || '';
       song.main_artists = s.mainArtists.map((a) => ({ name: a.name }));
       return song;
     });
@@ -319,7 +306,10 @@ export default function TransferAlbum() {
     fd.append('songs', JSON.stringify(collected));
     fd.append('album_description', albumDescription.trim());
     fd.append('additional_comments', additionalComments.trim());
-    fd.append('cover_art_key', coverKey);
+    fd.append('cover_art', coverFile);
+    songs.forEach((s, idx) => {
+      if (s.audioFile) fd.append(`audio_${idx + 1}`, s.audioFile);
+    });
 
     /* ===== BACKEND CONTRACT =========================================
      * POST /api/release/album/transfer
@@ -354,12 +344,12 @@ export default function TransferAlbum() {
         if (isNewArtist) {
           try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used'); } catch { /* private */ }
         }
-        setSubmitting(false); setUploadStatus('');
+        setSubmitting(false);
         navigate('/', { state: { successMsg: 'Album Transfer Request' } });
       })
       .catch((err) => {
         alert(err && err.message ? err.message : 'Submission failed. Please try again.');
-        setSubmitting(false); setUploadStatus('');
+        setSubmitting(false);
       });
   }
 
@@ -981,9 +971,6 @@ export default function TransferAlbum() {
         </div>
         {coverError && <p style={{ marginTop: 8, fontSize: '12px', color: '#f87171', fontWeight: 500 }}>{coverError}</p>}
         {coverFile && !coverError && <p style={{ marginTop: 8, fontSize: '12px', color: '#4ade80' }}>✓ 3000×3000 px verified</p>}
-        {submitting && uploadStatus && (
-          <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(99,102,241,0.08)', border: '0.5px solid rgba(99,102,241,0.25)', borderRadius: 9, fontSize: '12px', color: '#818cf8', fontWeight: 600 }}>{uploadStatus}</div>
-        )}
       </div>
 
       {/* Step 02: Songs */}

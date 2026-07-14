@@ -158,12 +158,10 @@ export default function NewSong() {
   const audioInputRef = useRef(null);
   const [coverDragOver, setCoverDragOver] = useState(false);
   const [audioDragOver, setAudioDragOver] = useState(false);
-  // R2 upload state
+  // File validation state
   const [coverArtFile, setCoverArtFile] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [fileErrors, setFileErrors] = useState({ cover: '', audio: '' });
-  const [uploadStatus, setUploadStatus] = useState(''); // label shown during upload
-  const [uploadProgress, setUploadProgress] = useState({ cover: 0, audio: 0 });
 
   // Label name
   const [customAllowed] = useState(isCustomLabelAllowed());
@@ -360,32 +358,6 @@ export default function NewSong() {
     }
 
     setSubmitting(true);
-    setUploadProgress({ cover: 0, audio: 0 });
-
-    const artistName = mainArtists[0]?.name || user?.artist_name || '';
-    const releaseName = songTitle.trim();
-    let coverKey = '', audioKey = '';
-
-    try {
-      setUploadStatus('Uploading cover art…');
-      coverKey = await uploadToR2(
-        coverArtFile,
-        { artistName, releaseName, fileType: 'cover_art' },
-        (pct) => setUploadProgress((p) => ({ ...p, cover: pct })),
-      );
-      setUploadStatus('Uploading audio…');
-      audioKey = await uploadToR2(
-        audioFile,
-        { artistName, releaseName, fileType: 'audio' },
-        (pct) => setUploadProgress((p) => ({ ...p, audio: pct })),
-      );
-      setUploadStatus('Submitting…');
-    } catch (err) {
-      alert(`File upload failed: ${err.message}`);
-      setSubmitting(false);
-      setUploadStatus('');
-      return;
-    }
 
     const mainArtistsPayload = mainArtists.map((a) => ({
       name: a.name || '',
@@ -424,8 +396,8 @@ export default function NewSong() {
     else if (savedLabel) labelValue = labelSelectValue.trim();
     else labelValue = labelSetupValue.trim();
     if (labelValue) fd.append('label_name', labelValue);
-    fd.append('cover_art_key', coverKey);
-    fd.append('audio_key', audioKey);
+    fd.append('cover_art', coverArtFile);
+    fd.append('audio_file', audioFile);
     fd.append('submission_type', 'new_song');
     if (isNewArtist) fd.append('new_artist', 'true');
 
@@ -446,13 +418,11 @@ export default function NewSong() {
           try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used'); } catch { /* private */ }
         }
         setSubmitting(false);
-        setUploadStatus('');
         navigate('/', { state: { successMsg: 'New Song Submission' } });
       })
       .catch((err) => {
         alert(err && err.message ? err.message : 'Submission failed. Please try again.');
         setSubmitting(false);
-        setUploadStatus('');
       });
   };
 
@@ -923,42 +893,15 @@ export default function NewSong() {
           </span>
         </label>
 
-        {/* Upload progress */}
-        {submitting && uploadStatus && (
-          <div style={{ marginBottom: '16px', padding: '14px 16px', background: 'rgba(99,102,241,0.08)', border: '0.5px solid rgba(99,102,241,0.25)', borderRadius: '12px' }}>
-            <div style={{ fontSize: '12px', color: '#818cf8', fontWeight: 600, marginBottom: 10 }}>{uploadStatus}</div>
-            {uploadProgress.cover > 0 && uploadProgress.cover < 100 && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#555', marginBottom: 4 }}>
-                  <span>Cover art</span><span>{uploadProgress.cover}%</span>
-                </div>
-                <div style={{ height: 4, background: '#1a1a1a', borderRadius: 2 }}>
-                  <div style={{ height: '100%', width: `${uploadProgress.cover}%`, background: 'linear-gradient(90deg,#6366f1,#818cf8)', borderRadius: 2, transition: 'width .2s' }} />
-                </div>
-              </div>
-            )}
-            {uploadProgress.audio > 0 && uploadProgress.audio < 100 && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#555', marginBottom: 4 }}>
-                  <span>Audio</span><span>{uploadProgress.audio}%</span>
-                </div>
-                <div style={{ height: 4, background: '#1a1a1a', borderRadius: 2 }}>
-                  <div style={{ height: '100%', width: `${uploadProgress.audio}%`, background: 'linear-gradient(90deg,#22c55e,#4ade80)', borderRadius: 2, transition: 'width .2s' }} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         <div style={{ marginTop: '28px' }}>
           <button
             onClick={submitRelease}
             disabled={submitting}
             style={{ width: '100%', padding: '16px', borderRadius: '14px', fontSize: '15px', fontFamily: "'Syne',sans-serif", fontWeight: 800, letterSpacing: '.03em', color: '#fff', background: 'linear-gradient(135deg,#FF8A50,#F26522,#D4520F)', border: 'none', cursor: submitting ? 'default' : 'pointer', opacity: submitting ? 0.75 : 1, boxShadow: '0 6px 28px rgba(242,101,34,0.4),inset 0 1px 0 rgba(255,255,255,0.15)', transition: 'opacity .2s,transform .2s' }}
-            onMouseOver={(e) => { if (!submitting) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 36px rgba(242,101,34,0.55),inset 0 1px 0 rgba(255,255,255,0.18)'; } }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 36px rgba(242,101,34,0.55),inset 0 1px 0 rgba(255,255,255,0.18)'; }}
             onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 28px rgba(242,101,34,0.4),inset 0 1px 0 rgba(255,255,255,0.15)'; }}
           >
-            {submitting ? (uploadStatus || 'Submitting…') : 'Submit Release'}
+            {submitting ? 'Submitting…' : 'Submit Release'}
           </button>
           <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px', lineHeight: 1.6 }}>Your submission will be reviewed within 3–5 business days. You'll receive an email confirmation.</p>
         </div>

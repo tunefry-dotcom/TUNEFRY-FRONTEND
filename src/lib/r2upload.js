@@ -1,22 +1,20 @@
 /**
- * R2 upload utilities — file validation + presigned-PUT upload flow.
- * All heavy file handling is done client-side before the form submits.
+ * Client-side file validation utilities for submission forms.
+ * Files are uploaded server-side (FastAPI → R2) — only validation happens here.
  */
-
-const BASE = 'https://backend1-xzx5.onrender.com'
 
 const ALLOWED_AUDIO_EXTS = ['.wav', '.mp3', '.flac']
 const ALLOWED_AUDIO_TYPES = [
   'audio/wav', 'audio/x-wav', 'audio/wave',
   'audio/mpeg',
   'audio/flac', 'audio/x-flac',
-  'audio/octet-stream', // some browsers report this for wav/flac
+  'audio/octet-stream',
 ]
 
 /**
  * Validate cover art file.
  * Resolves on pass, rejects with a human-readable error string.
- * Checks: JPEG/PNG type, exactly 3000×3000 px.
+ * Rules: JPEG or PNG, exactly 3000×3000 px.
  */
 export function validateCoverArt(file) {
   if (!file) return Promise.reject('Cover art is required.')
@@ -46,7 +44,7 @@ export function validateCoverArt(file) {
 
 /**
  * Validate audio file type (WAV / MP3 / FLAC only).
- * Returns an error string or null on pass.
+ * Returns an error string, or null on pass.
  */
 export function validateAudioFile(file) {
   if (!file) return 'Audio file is required.'
@@ -55,55 +53,4 @@ export function validateAudioFile(file) {
     return 'Audio must be a WAV, MP3, or FLAC file.'
   }
   return null
-}
-
-/**
- * Upload a file directly to R2 via a presigned PUT URL.
- *
- * @param {File} file
- * @param {{ artistName, releaseName, fileType, trackNumber? }} opts
- * @param {(pct: number) => void} [onProgress]  0–100 progress callback
- * @returns {Promise<string>} R2 object key
- */
-export async function uploadToR2(file, { artistName, releaseName, fileType, trackNumber = null }, onProgress) {
-  // 1. Get presigned PUT URL from backend
-  const presignRes = await fetch(`${BASE}/media/presign`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({
-      artist_name: artistName,
-      release_name: releaseName,
-      file_type: fileType,
-      content_type: file.type || 'application/octet-stream',
-      file_name: file.name,
-      track_number: trackNumber,
-    }),
-  })
-  if (!presignRes.ok) {
-    const err = await presignRes.json().catch(() => ({}))
-    throw new Error(err.detail || `Presign failed (${presignRes.status})`)
-  }
-  const { upload_url: uploadUrl, key } = await presignRes.json()
-
-  // 2. PUT to R2 with progress tracking
-  await new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('PUT', uploadUrl)
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
-    if (onProgress) {
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
-      })
-    }
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve()
-      else reject(new Error(`R2 upload failed (HTTP ${xhr.status})`))
-    }
-    xhr.onerror = () => reject(new Error('Network error during file upload.'))
-    xhr.ontimeout = () => reject(new Error('Upload timed out.'))
-    xhr.send(file)
-  })
-
-  return key
 }

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import '../../styles/transfer-song.css'
 import { useAuth } from '../../context/AuthContext'
 import { getProfile, updateProfile } from '../../lib/profile'
-import { validateCoverArt, validateAudioFile, uploadToR2 } from '../../lib/r2upload'
+import { validateCoverArt, validateAudioFile } from '../../lib/r2upload'
 
 const BASE = 'https://backend1-xzx5.onrender.com'
 
@@ -71,12 +71,10 @@ export default function TransferSong() {
   const [audioFileName, setAudioFileName] = useState('')
   const coverInputRef = useRef(null)
   const audioInputRef = useRef(null)
-  // R2 upload state
+  // File validation state
   const [coverArtFile, setCoverArtFile] = useState(null)
   const [audioFile, setAudioFile] = useState(null)
   const [fileErrors, setFileErrors] = useState({ cover: '', audio: '' })
-  const [uploadStatus, setUploadStatus] = useState('')
-  const [uploadProgress, setUploadProgress] = useState({ cover: 0, audio: 0 })
 
   // Validation error markers, per field id
   const [errors, setErrors] = useState({})
@@ -201,21 +199,6 @@ export default function TransferSong() {
     if (!audioFile) { setFileErrors((p) => ({ ...p, audio: 'Audio file is required.' })); return }
 
     setSubmitting(true)
-    setUploadProgress({ cover: 0, audio: 0 })
-
-    const artistName = mainArtists[0]?.name || user?.artist_name || ''
-    const releaseName = songTitle.trim()
-    let coverKey = '', audioKey = ''
-    try {
-      setUploadStatus('Uploading cover art…')
-      coverKey = await uploadToR2(coverArtFile, { artistName, releaseName, fileType: 'cover_art' }, (pct) => setUploadProgress((p) => ({ ...p, cover: pct })))
-      setUploadStatus('Uploading audio…')
-      audioKey = await uploadToR2(audioFile, { artistName, releaseName, fileType: 'audio' }, (pct) => setUploadProgress((p) => ({ ...p, audio: pct })))
-      setUploadStatus('Submitting…')
-    } catch (err) {
-      alert(`File upload failed: ${err.message}`)
-      setSubmitting(false); setUploadStatus(''); return
-    }
 
     // Collect artists
     const mainArtistsPayload = mainArtists.map((a) => ({
@@ -245,8 +228,8 @@ export default function TransferSong() {
     fd.append('yt_content_id', ytContentId)
     fd.append('main_artists', JSON.stringify(mainArtistsPayload))
     fd.append('featured_artists', JSON.stringify(featuredArtistsPayload))
-    fd.append('cover_art_key', coverKey)
-    fd.append('audio_key', audioKey)
+    fd.append('cover_art', coverArtFile)
+    fd.append('audio_file', audioFile)
 
     /* ===== BACKEND CONTRACT =========================================
      * POST /api/release/song/transfer
@@ -285,12 +268,12 @@ export default function TransferSong() {
         if (isNewArtist) {
           try { localStorage.setItem(`tf_new_artist_${user?.id}`, 'used') } catch { /* private */ }
         }
-        setSubmitting(false); setUploadStatus('')
+        setSubmitting(false)
         navigate('/', { state: { successMsg: 'Song Transfer Request' } })
       })
       .catch((err) => {
         alert(err && err.message ? err.message : 'Submission failed. Please try again.')
-        setSubmitting(false); setUploadStatus('')
+        setSubmitting(false)
       })
   }
 
@@ -635,24 +618,6 @@ export default function TransferSong() {
             {fileErrors.audio && <p style={{ marginTop: 6, fontSize: '12px', color: '#f87171', fontWeight: 500 }}>{fileErrors.audio}</p>}
           </div>
         </div>
-        {/* Upload progress */}
-        {submitting && uploadStatus && (
-          <div style={{ marginTop: 14, padding: '12px 14px', background: 'rgba(99,102,241,0.08)', border: '0.5px solid rgba(99,102,241,0.25)', borderRadius: 10 }}>
-            <div style={{ fontSize: '12px', color: '#818cf8', fontWeight: 600, marginBottom: 8 }}>{uploadStatus}</div>
-            {uploadProgress.cover > 0 && uploadProgress.cover < 100 && (
-              <div style={{ marginBottom: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#555', marginBottom: 3 }}><span>Cover art</span><span>{uploadProgress.cover}%</span></div>
-                <div style={{ height: 3, background: '#1a1a1a', borderRadius: 2 }}><div style={{ height: '100%', width: `${uploadProgress.cover}%`, background: 'linear-gradient(90deg,#6366f1,#818cf8)', borderRadius: 2, transition: 'width .2s' }} /></div>
-              </div>
-            )}
-            {uploadProgress.audio > 0 && uploadProgress.audio < 100 && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#555', marginBottom: 3 }}><span>Audio</span><span>{uploadProgress.audio}%</span></div>
-                <div style={{ height: 3, background: '#1a1a1a', borderRadius: 2 }}><div style={{ height: '100%', width: `${uploadProgress.audio}%`, background: 'linear-gradient(90deg,#22c55e,#4ade80)', borderRadius: 2, transition: 'width .2s' }} /></div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Step 07: Callertune Options */}
