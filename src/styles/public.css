@@ -479,7 +479,7 @@
 .yt-header { max-width: 1100px; margin: 0 auto 36px; padding: 0 40px; }
 .yt-track-wrap { overflow-x: auto; padding: 0 40px 16px; scrollbar-width: none; }
 .yt-track-wrap::-webkit-scrollbar { display: none; }
-.yt-track { display: flex; gap: 14px; width: max-content; }
+.yt-track-wrap .yt-track { display: flex; gap: 14px; width: max-content; }
 .yt-card {
   width: 280px; flex-shrink: 0; border-radius: 14px;
   background: var(--s1); border: 0.5px solid var(--bd); overflow: hidden;

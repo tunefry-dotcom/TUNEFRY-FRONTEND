@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import '../../styles/home-page.css'
+import { getHomeContent } from '../../lib/home'
 
 function useScrollReveal() {
   useEffect(() => {
@@ -101,13 +102,44 @@ const CHECK_SVG = (
   </svg>
 )
 
+function spotifyEmbedUrl(url) {
+  if (!url) return null
+  const m = url.match(/open\.spotify\.com\/(track|album|artist|playlist)\/([A-Za-z0-9]+)/)
+  return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0` : null
+}
+
+function SpotifyEmbed({ url, height = 152, title = 'Spotify player' }) {
+  const src = spotifyEmbedUrl(url)
+  if (!src) return null
+  return (
+    <iframe
+      style={{ borderRadius: '10px', display: 'block' }}
+      src={src}
+      title={title}
+      width="100%"
+      height={height}
+      frameBorder="0"
+      loading="lazy"
+      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+    />
+  )
+}
+
 export default function Home() {
   useScrollReveal()
   const [ytId, setYtId] = useState(null)
   const [faqOpen, setFaqOpen] = useState(null)
   const [flipped, setFlipped] = useState({})
+  const [homeContent, setHomeContent] = useState(null)
   const acRef = useRef(null)
   const drag = useRef({ on: false, startX: 0, scrollLeft: 0 })
+
+  const displayArtists = homeContent?.artists?.length > 0 ? homeContent.artists : ARTIST_CARDS
+  const displayYtCards = homeContent?.yt_testimonials?.length > 0 ? homeContent.yt_testimonials : YT_CARDS
+
+  useEffect(() => {
+    getHomeContent().then((data) => { if (data) setHomeContent(data) })
+  }, [])
 
   // Lock body scroll when lightbox is open
   useEffect(() => {
@@ -419,13 +451,7 @@ export default function Home() {
           >
             Already with another distributor? Switch to Tunefry without losing a single stream count, playlist placement, or release history. Our team handles the entire migration — zero downtime.
           </p>
-          <div
-            className="au au-d3"
-            style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
-              gap: '16px', maxWidth: '900px', margin: '0 auto',
-            }}
-          >
+          <div className="mig-cards-grid au au-d3">
             {[
               { icon: '📦', title: 'Transfer Your Catalog', desc: 'Move all your existing releases to Tunefry while keeping stream counts intact.' },
               { icon: '⚡', title: 'Zero Downtime', desc: 'Your music stays live throughout the migration process. No gaps in availability.' },
@@ -627,7 +653,7 @@ export default function Home() {
               onMouseUp={onAcMouseUp}
               onMouseLeave={onAcMouseUp}
             >
-              {ARTIST_CARDS.map((a, i) => (
+              {displayArtists.map((a, i) => (
                 <div
                   key={i}
                   className={`artist-card${flipped[i] ? ' flipped' : ''}`}
@@ -650,8 +676,15 @@ export default function Home() {
                         display: 'flex', alignItems: 'flex-end',
                       }}
                     >
-                      <div style={{ position: 'absolute', inset: 0, background: a.grad }} />
-                      <div style={{ position: 'absolute', inset: 0, background: a.overlay }} />
+                      <div style={{ position: 'absolute', inset: 0, background: a.grad || 'linear-gradient(135deg,#111,#222)' }} />
+                      {a.overlay && <div style={{ position: 'absolute', inset: 0, background: a.overlay }} />}
+                      {a.image_url && (
+                        <img
+                          src={a.image_url}
+                          alt={a.name || 'Artist'}
+                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }}
+                        />
+                      )}
                       <div
                         style={{
                           position: 'absolute', inset: 0,
@@ -665,10 +698,10 @@ export default function Home() {
                             fontWeight: 800, color: '#fff',
                           }}
                         >
-                          Artist Name
+                          {a.name || 'Artist Name'}
                         </div>
                         <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>
-                          Genre &middot; City
+                          {a.genre && a.city ? `${a.genre} · ${a.city}` : a.genre || a.city || 'Genre · City'}
                         </div>
                       </div>
                     </div>
@@ -682,9 +715,17 @@ export default function Home() {
                         display: 'flex', flexDirection: 'column',
                       }}
                     >
-                      <div style={{ position: 'relative', flex: 1, background: a.grad, overflow: 'hidden' }}>
+                      <div style={{ position: 'relative', flex: 1, background: a.grad || 'linear-gradient(135deg,#111,#222)', overflow: 'hidden' }}>
+                        {a.image_url && (
+                          <img
+                            src={a.image_url}
+                            alt={a.name || 'Artist'}
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        )}
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <div
+                            onClick={(e) => { e.stopPropagation(); const vid = a.yt_video_id || a.videoId; if (vid) setYtId(vid) }}
                             style={{
                               width: '56px', height: '56px', borderRadius: '50%',
                               background: 'rgba(255,255,255,0.15)',
@@ -711,7 +752,7 @@ export default function Home() {
                             fontWeight: 700, color: '#fff',
                           }}
                         >
-                          Artist Name
+                          {a.name || 'Artist Name'}
                         </div>
                         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
                           Watch testimonial &#9654;
@@ -728,24 +769,39 @@ export default function Home() {
       </section>
 
       {/* ── YOUTUBE VIDEOS ── */}
-      <section style={{ background: 'var(--bg)', borderTop: '0.5px solid var(--bd)', padding: '96px 40px 40px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto 40px' }}>
-          <div className="sec-head au" style={{ textAlign: 'center' }}>
-            <div className="sec-eyebrow">Watch &amp; Learn</div>
+      <section style={{ background: 'var(--bg)', borderTop: '0.5px solid var(--bd)', padding: '80px 0 60px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto 40px', padding: '0 40px' }}>
+          <div className="sec-head au" style={{ textAlign: 'center', marginBottom: '40px' }}>
             <h2 className="sec-title">YouTube Videos</h2>
-            <p className="sec-sub" style={{ maxWidth: '500px', margin: '0 auto' }}>
-              Tips, tutorials and artist stories from the Tunefry team.
-            </p>
           </div>
         </div>
-        <div className="yt-slider-wrap">
-          <div className="yt-track">
-            {[...YT_CARDS, ...YT_CARDS].map((c, i) => (
-              <div key={i} className="yt-card" onClick={() => setYtId(c.videoId)}>
+        <div style={{ overflow: 'hidden', position: 'relative' }}>
+          <div
+            style={{
+              position: 'absolute', top: 0, bottom: 0, left: 0, width: '80px',
+              background: 'linear-gradient(90deg, var(--bg), transparent)', zIndex: 2, pointerEvents: 'none',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute', top: 0, bottom: 0, right: 0, width: '80px',
+              background: 'linear-gradient(-90deg, var(--bg), transparent)', zIndex: 2, pointerEvents: 'none',
+            }}
+          />
+          <div
+            style={{
+              display: 'flex', gap: '20px', width: 'max-content',
+              animation: 'yt-scroll 30s linear infinite',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.animationPlayState = 'paused' }}
+            onMouseLeave={e => { e.currentTarget.style.animationPlayState = 'running' }}
+          >
+            {[...displayYtCards, ...displayYtCards].map((c, i) => (
+              <div key={i} className="yt-card" onClick={() => setYtId(c.video_id || c.videoId)}>
                 <div className="yt-thumb">
                   <div
                     className="yt-thumb-bg"
-                    style={{ background: c.bg, position: 'absolute', inset: 0, borderRadius: '10px 10px 0 0' }}
+                    style={{ background: c.bg || 'linear-gradient(135deg,#1a0a2e,#2d1060)', position: 'absolute', inset: 0, borderRadius: '10px 10px 0 0' }}
                   />
                   <div className="yt-play-btn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
@@ -760,21 +816,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </div>
-        <div style={{ textAlign: 'center', marginTop: '28px' }}>
-          <a
-            href="https://www.youtube.com/@tunefry"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              padding: '10px 24px', border: '0.5px solid rgba(255,255,255,0.15)',
-              borderRadius: '100px', fontSize: '13px', color: 'var(--t2)',
-              textDecoration: 'none', transition: 'all .2s',
-            }}
-          >
-            View Channel &rarr;
-          </a>
         </div>
       </section>
 
@@ -812,25 +853,32 @@ export default function Home() {
               scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent',
             }}
           >
-            {[
-              { grad: 'linear-gradient(135deg,rgba(255,107,0,0.4),rgba(139,92,246,0.4),#111)', badge: 'hot', delay: '' },
-              { grad: 'linear-gradient(135deg,rgba(45,202,114,0.4),rgba(6,182,212,0.4),#111)', badge: 'hot', delay: ' au-d1' },
-              { grad: 'linear-gradient(135deg,rgba(59,130,246,0.4),rgba(168,85,247,0.4),#111)', badge: 'hot', delay: ' au-d2' },
-              { grad: 'linear-gradient(135deg,rgba(236,72,153,0.4),rgba(255,107,0,0.4),#111)', badge: 'rising', delay: ' au-d3' },
-              { grad: 'linear-gradient(135deg,rgba(234,179,8,0.4),rgba(45,202,114,0.4),#111)', badge: 'rising', delay: ' au-d4' },
-              { grad: 'linear-gradient(135deg,rgba(139,92,246,0.4),rgba(59,130,246,0.4),#111)', badge: 'hot', delay: ' au-d1' },
-            ].map((c, i) => (
-              <div key={i} className={`tr-card au${c.delay}`}>
-                <div className="tr-art">
-                  <div className="tr-art-bg" style={{ background: c.grad, position: 'absolute', inset: 0 }} />
-                  <div className={`tr-badge ${c.badge}`}>{c.badge === 'hot' ? '🔥 Hot' : '↑ Rising'}</div>
-                </div>
-                <div className="tr-info">
-                  <div className="tr-track">Track Name</div>
-                  <div className="tr-artist">Artist Name</div>
-                </div>
-              </div>
-            ))}
+            {homeContent?.trending_links?.length > 0
+              ? homeContent.trending_links.map((url, i) => (
+                  <div key={i} style={{ minWidth: '280px', flexShrink: 0 }}>
+                    <SpotifyEmbed url={url} height={152} title={`Trending ${i + 1}`} />
+                  </div>
+                ))
+              : [
+                  { grad: 'linear-gradient(135deg,rgba(255,107,0,0.4),rgba(139,92,246,0.4),#111)', badge: 'hot', delay: '' },
+                  { grad: 'linear-gradient(135deg,rgba(45,202,114,0.4),rgba(6,182,212,0.4),#111)', badge: 'hot', delay: ' au-d1' },
+                  { grad: 'linear-gradient(135deg,rgba(59,130,246,0.4),rgba(168,85,247,0.4),#111)', badge: 'hot', delay: ' au-d2' },
+                  { grad: 'linear-gradient(135deg,rgba(236,72,153,0.4),rgba(255,107,0,0.4),#111)', badge: 'rising', delay: ' au-d3' },
+                  { grad: 'linear-gradient(135deg,rgba(234,179,8,0.4),rgba(45,202,114,0.4),#111)', badge: 'rising', delay: ' au-d4' },
+                  { grad: 'linear-gradient(135deg,rgba(139,92,246,0.4),rgba(59,130,246,0.4),#111)', badge: 'hot', delay: ' au-d1' },
+                ].map((c, i) => (
+                  <div key={i} className={`tr-card au${c.delay}`}>
+                    <div className="tr-art">
+                      <div className="tr-art-bg" style={{ background: c.grad, position: 'absolute', inset: 0 }} />
+                      <div className={`tr-badge ${c.badge}`}>{c.badge === 'hot' ? '🔥 Hot' : '↑ Rising'}</div>
+                    </div>
+                    <div className="tr-info">
+                      <div className="tr-track">Track Name</div>
+                      <div className="tr-artist">Artist Name</div>
+                    </div>
+                  </div>
+                ))
+            }
           </div>
         </div>
       </section>
@@ -856,22 +904,16 @@ export default function Home() {
               >
                 Latest Release
               </div>
-              <div
-                style={{
-                  background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
-                  border: '0.5px solid rgba(255,255,255,0.08)', padding: '16px',
-                }}
-              >
-                <iframe
-                  style={{ borderRadius: '10px' }}
-                  src="https://open.spotify.com/embed/track/TRACK_ID_HERE?utm_source=generator&theme=0"
-                  width="100%" height="152" frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  title="Latest Release"
-                />
-              </div>
+              {homeContent?.latest_release_link && (
+                <div
+                  style={{
+                    background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
+                    border: '0.5px solid rgba(255,255,255,0.08)', padding: '16px',
+                  }}
+                >
+                  <SpotifyEmbed url={homeContent.latest_release_link} height={152} title="Latest Release" />
+                </div>
+              )}
               <div
                 style={{
                   fontFamily: 'var(--font-d)', fontSize: '13px', fontWeight: 700,
@@ -882,38 +924,26 @@ export default function Home() {
                 Popular Artists
               </div>
               <div className="inner-grid2" style={{ gap: '12px' }}>
-                <div
-                  style={{
-                    background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
-                    border: '0.5px solid rgba(255,255,255,0.08)', padding: '12px',
-                  }}
-                >
-                  <iframe
-                    style={{ borderRadius: '8px' }}
-                    src="https://open.spotify.com/embed/artist/ARTIST_ID_1?utm_source=generator&theme=0"
-                    width="100%" height="152" frameBorder="0"
-                    allowFullScreen
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                    title="Artist 1"
-                  />
-                </div>
-                <div
-                  style={{
-                    background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
-                    border: '0.5px solid rgba(255,255,255,0.08)', padding: '12px',
-                  }}
-                >
-                  <iframe
-                    style={{ borderRadius: '8px' }}
-                    src="https://open.spotify.com/embed/artist/ARTIST_ID_2?utm_source=generator&theme=0"
-                    width="100%" height="152" frameBorder="0"
-                    allowFullScreen
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                    title="Artist 2"
-                  />
-                </div>
+                {homeContent?.popular_artist_links?.[0] && (
+                  <div
+                    style={{
+                      background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
+                      border: '0.5px solid rgba(255,255,255,0.08)', padding: '12px',
+                    }}
+                  >
+                    <SpotifyEmbed url={homeContent.popular_artist_links[0]} height={152} title="Artist 1" />
+                  </div>
+                )}
+                {homeContent?.popular_artist_links?.[1] && (
+                  <div
+                    style={{
+                      background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
+                      border: '0.5px solid rgba(255,255,255,0.08)', padding: '12px',
+                    }}
+                  >
+                    <SpotifyEmbed url={homeContent.popular_artist_links[1]} height={152} title="Artist 2" />
+                  </div>
+                )}
               </div>
             </div>
             <div>
@@ -926,22 +956,19 @@ export default function Home() {
               >
                 This Week's Top Hits
               </div>
-              <div
-                style={{
-                  background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
-                  border: '0.5px solid rgba(255,255,255,0.08)', padding: '16px',
-                }}
-              >
-                <iframe
-                  style={{ borderRadius: '10px' }}
-                  src="https://open.spotify.com/embed/playlist/PLAYLIST_ID_HERE?utm_source=generator&theme=0"
-                  width="100%" height="352" frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  title="Top Hits Playlist"
-                />
-              </div>
+              {homeContent?.top_hits_links?.length > 0 && (
+                <div
+                  style={{
+                    background: 'rgba(255,255,255,0.03)', borderRadius: '14px',
+                    border: '0.5px solid rgba(255,255,255,0.08)', padding: '16px',
+                    display: 'flex', flexDirection: 'column', gap: '10px',
+                  }}
+                >
+                  {homeContent.top_hits_links.map((url, i) => (
+                    <SpotifyEmbed key={i} url={url} height={152} title={`Top Hit ${i + 1}`} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

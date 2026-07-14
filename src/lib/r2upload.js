@@ -54,3 +54,17 @@ export function validateAudioFile(file) {
   }
   return null
 }
+
+/**
+ * Upload a file to R2 via the backend API.
+ * The actual upload is handled server-side (FastAPI → R2).
+ * This is a placeholder — replace with real implementation when backend is ready.
+ */
+export async function uploadToR2(file, path) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('path', path ?? '')
+  const res = await fetch('/api/upload/r2', { method: 'POST', body: formData, credentials: 'include' })
+  if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`)
+  return res.json()
+}

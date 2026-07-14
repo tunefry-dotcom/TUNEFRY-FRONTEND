@@ -37,7 +37,7 @@ const options = {
   },
 }
 
-export default function PlatformChart() {
+export default function PlatformChart({ hideList }) {
   const data = {
     labels: PLATFORMS.map((p) => p.name),
     datasets: [
@@ -47,6 +47,10 @@ export default function PlatformChart() {
         hoverBackgroundColor: PLATFORMS.map((p) => p.color),
       },
     ],
+  }
+
+  if (hideList) {
+    return <Doughnut data={data} options={options} />
   }
 
   return (

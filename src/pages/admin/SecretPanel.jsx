@@ -122,6 +122,7 @@ function AdminSidebar({ active, onNav, onLock }) {
     { id: 'insta-link', label: 'Insta Link', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg> },
     { id: 'new-artist', label: 'New Artist Profile Updates', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> },
     { id: 'purchases', label: 'Plan Purchases', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
+    { id: 'master-home', label: 'Master Home', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
   ]
 
   return (
@@ -828,6 +829,306 @@ function PurchasesView({ secret, onSessionExpired }) {
   )
 }
 
+// ── Master Home view ────────────────────────────────────────────────────────
+function MasterHomeView({ secret, onSessionExpired }) {
+  const [homeData, setHomeData] = useState({
+    artists: [],
+    yt_testimonials: [],
+    trending_links: [],
+    latest_release_link: '',
+    popular_artist_links: ['', ''],
+    top_hits_links: ['', '', '', '', ''],
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+  const [imgUploading, setImgUploading] = useState(-1)
+
+  function extractYtId(url) {
+    if (!url) return ''
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]+)/)
+    return m ? m[1] : url.trim()
+  }
+
+  useEffect(() => {
+    fetch(`${BASE}/admin/home`, { headers: { 'X-Admin-Secret': secret } })
+      .then(async (r) => {
+        if (r.status === 403) { onSessionExpired(); return }
+        const d = await r.json()
+        setHomeData({
+          artists: d.artists || [],
+          yt_testimonials: d.yt_testimonials || [],
+          trending_links: d.trending_links || [],
+          latest_release_link: d.latest_release_link || '',
+          popular_artist_links: [
+            d.popular_artist_links?.[0] || '',
+            d.popular_artist_links?.[1] || '',
+          ],
+          top_hits_links: Array.from({ length: 5 }, (_, i) => d.top_hits_links?.[i] || ''),
+        })
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [secret])
+
+  const handleSave = async () => {
+    setSaving(true)
+    setSaveMsg('')
+    try {
+      const payload = {
+        artists: homeData.artists.map((a) => ({ ...a, yt_video_id: extractYtId(a.yt_video_id) })),
+        yt_testimonials: homeData.yt_testimonials.map((t) => ({ ...t, video_id: extractYtId(t.video_id) })),
+        trending_links: homeData.trending_links.filter(Boolean),
+        latest_release_link: homeData.latest_release_link || null,
+        popular_artist_links: homeData.popular_artist_links.filter(Boolean),
+        top_hits_links: homeData.top_hits_links.filter(Boolean),
+      }
+      const res = await fetch(`${BASE}/admin/home`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': secret },
+        body: JSON.stringify(payload),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || `Save failed (${res.status})`)
+      }
+      setSaveMsg('Saved successfully!')
+    } catch (e) {
+      setSaveMsg(e.message)
+    } finally {
+      setSaving(false)
+      setTimeout(() => setSaveMsg(''), 4000)
+    }
+  }
+
+  const handleImageUpload = async (e, idx) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImgUploading(idx)
+    setSaveMsg('')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${BASE}/admin/home/artist-image`, {
+        method: 'POST',
+        headers: { 'X-Admin-Secret': secret },
+        body: form,
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Upload failed')
+      }
+      const { url } = await res.json()
+      setHomeData((prev) => ({
+        ...prev,
+        artists: prev.artists.map((a, i) => (i === idx ? { ...a, image_url: url } : a)),
+      }))
+    } catch (e) {
+      setSaveMsg(`Image upload failed: ${e.message}`)
+    } finally {
+      setImgUploading(-1)
+    }
+  }
+
+  const addArtist = () =>
+    setHomeData((prev) => ({
+      ...prev,
+      artists: [...prev.artists, { name: '', image_url: '', genre: '', city: '', yt_video_id: '' }],
+    }))
+  const removeArtist = (i) =>
+    setHomeData((prev) => ({ ...prev, artists: prev.artists.filter((_, j) => j !== i) }))
+  const updateArtist = (i, field, val) =>
+    setHomeData((prev) => ({
+      ...prev,
+      artists: prev.artists.map((a, j) => (j === i ? { ...a, [field]: val } : a)),
+    }))
+
+  const addYT = () =>
+    setHomeData((prev) => ({
+      ...prev,
+      yt_testimonials: [...prev.yt_testimonials, { video_id: '', title: '', channel: '' }],
+    }))
+  const removeYT = (i) =>
+    setHomeData((prev) => ({ ...prev, yt_testimonials: prev.yt_testimonials.filter((_, j) => j !== i) }))
+  const updateYT = (i, field, val) =>
+    setHomeData((prev) => ({
+      ...prev,
+      yt_testimonials: prev.yt_testimonials.map((t, j) => (j === i ? { ...t, [field]: val } : t)),
+    }))
+
+  const addTrending = () =>
+    setHomeData((prev) => ({ ...prev, trending_links: [...prev.trending_links, ''] }))
+  const removeTrending = (i) =>
+    setHomeData((prev) => ({ ...prev, trending_links: prev.trending_links.filter((_, j) => j !== i) }))
+  const updateTrending = (i, val) =>
+    setHomeData((prev) => ({
+      ...prev,
+      trending_links: prev.trending_links.map((u, j) => (j === i ? val : u)),
+    }))
+
+  const inp = {
+    background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7,
+    padding: '.5rem .75rem', color: '#f0f0f0', fontSize: '.85rem',
+    outline: 'none', width: '100%', boxSizing: 'border-box',
+  }
+  const card = {
+    background: '#0f0f0f', border: '1px solid #1a1a1a', borderRadius: 12,
+    padding: '20px', marginBottom: '20px',
+  }
+  const secLabel = {
+    fontSize: '.75rem', fontWeight: 700, color: '#555', letterSpacing: '1px',
+    textTransform: 'uppercase', marginBottom: '12px',
+  }
+  const addBtn = {
+    padding: '.45rem .9rem', borderRadius: 7, border: '1px solid #2a2a2a',
+    background: 'transparent', color: '#9ca3af', fontSize: '.82rem', cursor: 'pointer',
+  }
+  const delBtn = {
+    padding: '.38rem .6rem', borderRadius: 7, border: '1px solid #7f1d1d',
+    background: '#2d0a0a', color: '#f87171', fontSize: '.8rem', cursor: 'pointer', flexShrink: 0,
+  }
+
+  if (loading) return <div style={{ padding: '3rem', color: '#555', fontSize: '.9rem' }}>Loading…</div>
+
+  return (
+    <div style={{ padding: '2rem', maxWidth: 860, margin: '0 auto' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 style={{ color: '#f0f0f0', fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>Master Home</h1>
+          <p style={{ color: '#555', fontSize: '.83rem', margin: '.3rem 0 0' }}>Manage all dynamic content on the public home page.</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {saveMsg && (
+            <span style={{ fontSize: '.82rem', color: saveMsg.startsWith('Saved') ? '#4ade80' : '#f87171' }}>
+              {saveMsg}
+            </span>
+          )}
+          <button onClick={handleSave} disabled={saving}
+            style={{ padding: '.6rem 1.4rem', borderRadius: 8, border: 'none', background: saving ? '#1a1a1a' : 'linear-gradient(135deg,#ff6b2b,#ff4500)', color: saving ? '#444' : '#fff', fontWeight: 600, fontSize: '.88rem', cursor: saving ? 'default' : 'pointer' }}>
+            {saving ? 'Saving…' : 'Save All'}
+          </button>
+        </div>
+      </div>
+
+      {/* Artists & Projects */}
+      <div style={card}>
+        <div style={secLabel}>{'Artists & Projects'}</div>
+        {homeData.artists.map((a, i) => (
+          <div key={i} style={{ background: '#161616', border: '1px solid #222', borderRadius: 10, padding: '14px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <label style={{ cursor: 'pointer', flexShrink: 0 }}>
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, i)} />
+                {a.image_url
+                  ? <img src={a.image_url} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', display: 'block' }} />
+                  : (
+                    <div style={{ width: 52, height: 52, borderRadius: 8, background: '#222', border: '1px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                      {imgUploading === i ? '⏳' : '📷'}
+                    </div>
+                  )
+                }
+              </label>
+              <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <input placeholder="Name" value={a.name} onChange={(e) => updateArtist(i, 'name', e.target.value)} style={inp} />
+                <input placeholder="Genre" value={a.genre} onChange={(e) => updateArtist(i, 'genre', e.target.value)} style={inp} />
+                <input placeholder="City" value={a.city} onChange={(e) => updateArtist(i, 'city', e.target.value)} style={inp} />
+                <input placeholder="YouTube URL (testimonial)" value={a.yt_video_id} onChange={(e) => updateArtist(i, 'yt_video_id', e.target.value)} style={inp} />
+              </div>
+              <button onClick={() => removeArtist(i)} style={delBtn}>&#x2715;</button>
+            </div>
+          </div>
+        ))}
+        <button onClick={addArtist} style={addBtn}>+ Add Artist</button>
+      </div>
+
+      {/* YouTube Testimonials */}
+      <div style={card}>
+        <div style={secLabel}>YouTube Testimonials</div>
+        {homeData.yt_testimonials.map((t, i) => (
+          <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+            <input placeholder="YouTube URL or Video ID" value={t.video_id} onChange={(e) => updateYT(i, 'video_id', e.target.value)} style={{ ...inp, flex: 2 }} />
+            <input placeholder="Title" value={t.title} onChange={(e) => updateYT(i, 'title', e.target.value)} style={{ ...inp, flex: 2 }} />
+            <input placeholder="Channel" value={t.channel} onChange={(e) => updateYT(i, 'channel', e.target.value)} style={{ ...inp, flex: 1 }} />
+            <button onClick={() => removeYT(i)} style={delBtn}>&#x2715;</button>
+          </div>
+        ))}
+        <button onClick={addYT} style={addBtn}>+ Add Video</button>
+      </div>
+
+      {/* Trending On Tunefry */}
+      <div style={card}>
+        <div style={secLabel}>Trending On Tunefry</div>
+        <p style={{ color: '#555', fontSize: '.8rem', margin: '0 0 12px' }}>Spotify track/album links — appear as embed cards in the scrollable row.</p>
+        {homeData.trending_links.map((url, i) => (
+          <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+            <input placeholder={`Spotify URL ${i + 1}`} value={url} onChange={(e) => updateTrending(i, e.target.value)} style={inp} />
+            <button onClick={() => removeTrending(i)} style={delBtn}>&#x2715;</button>
+          </div>
+        ))}
+        <button onClick={addTrending} style={addBtn}>+ Add Link</button>
+      </div>
+
+      {/* Latest Release */}
+      <div style={card}>
+        <div style={secLabel}>Latest Release</div>
+        <p style={{ color: '#555', fontSize: '.8rem', margin: '0 0 10px' }}>One Spotify link shown as a large embed card.</p>
+        <input placeholder="https://open.spotify.com/track/..."
+          value={homeData.latest_release_link || ''}
+          onChange={(e) => setHomeData((prev) => ({ ...prev, latest_release_link: e.target.value }))}
+          style={inp} />
+      </div>
+
+      {/* Popular Artists */}
+      <div style={card}>
+        <div style={secLabel}>Popular Artists</div>
+        <p style={{ color: '#555', fontSize: '.8rem', margin: '0 0 12px' }}>Two Spotify links shown as side-by-side embed cards.</p>
+        {[0, 1].map((i) => (
+          <div key={i} style={{ marginBottom: '10px' }}>
+            <div style={{ color: '#555', fontSize: '.77rem', marginBottom: '4px' }}>Artist {i + 1}</div>
+            <input placeholder="https://open.spotify.com/artist/..."
+              value={homeData.popular_artist_links[i] || ''}
+              onChange={(e) => {
+                const val = e.target.value
+                setHomeData((prev) => {
+                  const links = [...prev.popular_artist_links]
+                  links[i] = val
+                  return { ...prev, popular_artist_links: links }
+                })
+              }}
+              style={inp} />
+          </div>
+        ))}
+      </div>
+
+      {/* This Week's Top Hits */}
+      <div style={card}>
+        <div style={secLabel}>{"This Week's Top Hits"}</div>
+        <p style={{ color: '#555', fontSize: '.8rem', margin: '0 0 12px' }}>Five Spotify track links shown as stacked embed cards.</p>
+        {Array.from({ length: 5 }, (_, i) => (
+          <div key={i} style={{ marginBottom: '10px' }}>
+            <div style={{ color: '#555', fontSize: '.77rem', marginBottom: '4px' }}>Hit {i + 1}</div>
+            <input placeholder="https://open.spotify.com/track/..."
+              value={homeData.top_hits_links[i] || ''}
+              onChange={(e) => {
+                const val = e.target.value
+                setHomeData((prev) => {
+                  const links = [...prev.top_hits_links]
+                  links[i] = val
+                  return { ...prev, top_hits_links: links }
+                })
+              }}
+              style={inp} />
+          </div>
+        ))}
+      </div>
+
+    </div>
+  )
+}
+
 // ── Root ────────────────────────────────────────────────────────────────────
 const SUBMISSION_VIEWS = [
   { id: 'songs',           title: 'Songs' },
@@ -857,6 +1158,7 @@ export default function SecretPanel() {
         {activeNav === 'users' && <UsersView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'new-artist' && <NewArtistView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'purchases' && <PurchasesView secret={secret} onSessionExpired={handleLock} />}
+        {activeNav === 'master-home' && <MasterHomeView secret={secret} onSessionExpired={handleLock} />}
         {subView && (
           <SubmissionsView key={subView.id} secret={secret} category={subView.id} title={subView.title} onSessionExpired={handleLock} />
         )}

@@ -69,8 +69,8 @@ export default function StreamsChart() {
     <div className="chart-card glass-card animate-in animate-in-delay-2">
       <div className="chart-header">
         <div>
-          <p className="chart-title">Streams</p>
-          <p className="chart-subtitle">Total plays per month</p>
+          <p className="chart-title">Monthly Streams</p>
+          <p className="chart-subtitle">Stream volume over time</p>
         </div>
       </div>
       <div className="chart-canvas-wrap">
