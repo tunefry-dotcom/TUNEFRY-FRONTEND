@@ -1,13 +1,25 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { forgotPassword } from '../../lib/auth'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setSent(true)
+    setError('')
+    setLoading(true)
+    try {
+      await forgotPassword(email)
+      setSent(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -48,7 +60,15 @@ export default function ForgotPassword() {
                     <input type="email" className="form-input has-icon" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
                 </div>
-                <button type="submit" className="btn btn-primary btn-full">Send Reset Link</button>
+                {error && (
+                  <div style={{ color: '#f87171', fontSize: '13px', fontWeight: 500, padding: '10px 14px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {error}
+                  </div>
+                )}
+                <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+                  {loading ? 'Sending…' : 'Send Reset Link'}
+                </button>
               </form>
               <p className="auth-footer-text" style={{ marginTop: 16 }}>
                 <Link to="/login" className="auth-link">← Back to Sign In</Link>

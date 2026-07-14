@@ -67,6 +67,18 @@ export async function signup(fullName, artistName, phone, email, password) {
   return data
 }
 
+export async function forgotPassword(email) {
+  const res = await fetch(`${BASE}/auth/forgot-password`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.detail || 'Request failed')
+  return data
+}
+
 export async function logout() {
   try {
     await fetch(`${BASE}/auth/logout`, {
