@@ -169,6 +169,12 @@ function UsersView({ secret, onSessionExpired }) {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [editingUser, setEditingUser] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [editSaving, setEditSaving] = useState(false)
+  const [editMsg, setEditMsg] = useState('')
+  const [deletingId, setDeletingId] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const fetchUsers = useCallback(async () => {
     setLoading(true); setError('')
@@ -183,6 +189,38 @@ function UsersView({ secret, onSessionExpired }) {
   }, [secret, onSessionExpired])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
+
+  const handleDelete = async (uid) => {
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`${BASE}/admin/users/${uid}`, {
+        method: 'DELETE', headers: { 'X-Admin-Secret': secret },
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed')
+      setUsers(prev => prev.filter(u => u.id !== uid))
+      setTotal(prev => prev - 1)
+      setDeletingId(null)
+    } catch (e) { setError(e.message) }
+    finally { setDeleteLoading(false) }
+  }
+
+  const handleEditSave = async () => {
+    setEditSaving(true); setEditMsg('')
+    try {
+      const res = await fetch(`${BASE}/admin/users/${editingUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': secret },
+        body: JSON.stringify(editForm),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) throw new Error((await res.json()).detail || 'Save failed')
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editForm } : u))
+      setEditMsg('Saved!')
+      setTimeout(() => setEditingUser(null), 800)
+    } catch (e) { setEditMsg(e.message) }
+    finally { setEditSaving(false) }
+  }
 
   const filtered = search.trim()
     ? users.filter((u) => { const q = search.toLowerCase(); return u.email.toLowerCase().includes(q) || u.full_name.toLowerCase().includes(q) })
@@ -213,13 +251,13 @@ function UsersView({ secret, onSessionExpired }) {
           : filtered.length === 0 ? <div style={{ textAlign: 'center', color: '#555', paddingTop: '3rem' }}>{search ? 'No users match.' : 'No users found.'}</div>
           : (
             <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 11, overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.1fr 1.2fr 1fr 1fr', padding: '.65rem 1.1rem', borderBottom: '1px solid #1a1a1a', color: '#555', fontSize: '.74rem', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-                <span>User</span><span>Artist Name</span><span>Phone</span><span>Plan</span><span>Joined</span><span>Last Sign In</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.1fr 1.2fr 1fr 1fr 90px', padding: '.65rem 1.1rem', borderBottom: '1px solid #1a1a1a', color: '#555', fontSize: '.74rem', fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                <span>User</span><span>Artist Name</span><span>Phone</span><span>Plan</span><span>Joined</span><span>Last Sign In</span><span>Actions</span>
               </div>
               {filtered.map((u, i) => {
                 const ps = PLAN_COLORS[u.plan] || PLAN_COLORS.free
                 return (
-                  <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.1fr 1.2fr 1fr 1fr', padding: '.85rem 1.1rem', alignItems: 'center', borderBottom: i < filtered.length - 1 ? '1px solid #161616' : 'none' }}
+                  <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.1fr 1.2fr 1fr 1fr 90px', padding: '.85rem 1.1rem', alignItems: 'center', borderBottom: i < filtered.length - 1 ? '1px solid #161616' : 'none' }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#161616')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -234,12 +272,75 @@ function UsersView({ secret, onSessionExpired }) {
                     <span style={{ display: 'inline-block', padding: '.22rem .6rem', borderRadius: 5, fontSize: '.75rem', fontWeight: 600, background: ps.bg, color: ps.text, border: `1px solid ${ps.border}` }}>{u.plan_name}</span>
                     <div style={{ color: '#6b7280', fontSize: '.8rem' }}>{fmtDate(u.created_at)}</div>
                     <div style={{ color: '#6b7280', fontSize: '.8rem' }}>{fmtDate(u.last_sign_in_at)}</div>
+                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                      <button
+                        onClick={() => {
+                          setEditingUser(u)
+                          setEditForm({
+                            full_name: u.full_name || '', artist_name: u.artist_name || '',
+                            phone: u.phone || '', city: u.city || '', state: u.state || '',
+                            date_of_birth: u.date_of_birth || '', gender: u.gender || '',
+                            bio: u.bio || '', spotify_url: u.spotify_url || '',
+                            apple_music_url: u.apple_music_url || '',
+                            instagram: u.instagram || '', youtube_url: u.youtube_url || '',
+                          })
+                          setEditMsg('')
+                        }}
+                        title="Edit"
+                        style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid #2a2a2a', background: '#1a1a1a', color: '#9ca3af', cursor: 'pointer', fontSize: '.75rem', lineHeight: 1 }}>
+                        ✏️
+                      </button>
+                      {deletingId === u.id
+                        ? <>
+                            <button onClick={() => handleDelete(u.id)} disabled={deleteLoading}
+                              style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid #7f1d1d', background: '#2d0a0a', color: '#f87171', cursor: 'pointer', fontSize: '.75rem' }}>✓</button>
+                            <button onClick={() => setDeletingId(null)}
+                              style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid #2a2a2a', background: '#1a1a1a', color: '#9ca3af', cursor: 'pointer', fontSize: '.75rem' }}>✕</button>
+                          </>
+                        : <button onClick={() => setDeletingId(u.id)} title="Delete"
+                            style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid #2a2a2a', background: '#1a1a1a', color: '#f87171', cursor: 'pointer', fontSize: '.75rem', lineHeight: 1 }}>🗑</button>
+                      }
+                    </div>
                   </div>
                 )
               })}
             </div>
           )}
       </div>
+      {editingUser && (
+        <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 11, padding: '1.25rem 1.5rem', margin: '0 1.75rem 1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ color: '#f0f0f0', margin: 0, fontSize: '1rem', fontWeight: 600 }}>Edit · {editingUser.email}</h3>
+            <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>✕</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', marginBottom: '1rem' }}>
+            {[
+              ['Full Name', 'full_name'], ['Artist Name', 'artist_name'], ['Phone', 'phone'],
+              ['City', 'city'], ['State', 'state'], ['Date of Birth', 'date_of_birth'],
+              ['Gender', 'gender'], ['Instagram', 'instagram'], ['YouTube URL', 'youtube_url'],
+              ['Spotify URL', 'spotify_url'], ['Apple Music URL', 'apple_music_url'],
+            ].map(([label, key]) => (
+              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>{label}</span>
+                <input value={editForm[key] || ''} onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
+                  style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none' }} />
+              </label>
+            ))}
+          </div>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '1rem' }}>
+            <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>Bio</span>
+            <textarea value={editForm.bio || ''} onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))} rows={3}
+              style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', resize: 'vertical' }} />
+          </label>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button onClick={handleEditSave} disabled={editSaving}
+              style={{ padding: '.5rem 1.2rem', borderRadius: 8, border: 'none', background: '#ff6b2b', color: '#fff', fontWeight: 600, fontSize: '.85rem', cursor: editSaving ? 'default' : 'pointer', opacity: editSaving ? .6 : 1 }}>
+              {editSaving ? 'Saving…' : 'Save Changes'}
+            </button>
+            {editMsg && <span style={{ color: editMsg === 'Saved!' ? '#4ade80' : '#f87171', fontSize: '.84rem' }}>{editMsg}</span>}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
