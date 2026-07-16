@@ -1253,7 +1253,7 @@ export default function SecretPanel() {
   const subView = SUBMISSION_VIEWS.find((v) => v.id === activeNav)
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0a0a', fontFamily: 'system-ui,sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0a0a0a', fontFamily: 'system-ui,sans-serif', userSelect: 'text' }}>
       <AdminSidebar active={activeNav} onNav={setActiveNav} onLock={handleLock} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {activeNav === 'users' && <UsersView secret={secret} onSessionExpired={handleLock} />}
