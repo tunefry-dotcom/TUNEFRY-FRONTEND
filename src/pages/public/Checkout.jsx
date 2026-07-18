@@ -4,12 +4,12 @@ import '../../styles/checkout.css';
 
 // ── Plan Data ──────────────────────────────────────────────
 const PLANS = {
-  'free'          : { name:'Free',          sub:'forever free · 1 artist', price:0, origPrice:0, royalty:'75%',  labelField:false, artistCounter:false },
-  'single-song'   : { name:'Single Song',   sub:'one-time · per song',     price:269, origPrice:299, royalty:'85%',  labelField:false, artistCounter:false },
-  'starter'       : { name:'Starter',       sub:'per year · unlimited releases', price:899, origPrice:999, royalty:'90%',  labelField:false, artistCounter:false },
-  'single-artist' : { name:'Single Artist', sub:'per year · unlimited releases', price:1439, origPrice:1599, royalty:'100%', labelField:false, artistCounter:false },
-  'double-artist' : { name:'Double Artist', sub:'per year · 2 artists',    price:2699, origPrice:2999, royalty:'100%', labelField:true, artistCounter:false },
-  'label'         : { name:'Label Plan',    sub:'per year · min. 5 artists', price:6300, origPrice:7000, royalty:'100%', labelField:true, artistCounter:true }
+  'free'          : { name:'Free',          sub:'forever free · 1 artist', price:0, royalty:'75%',  labelField:false, artistCounter:false },
+  'single-song'   : { name:'Single Song',   sub:'one-time · per song',     price:269, royalty:'85%',  labelField:false, artistCounter:false },
+  'starter'       : { name:'Starter',       sub:'per year · unlimited releases', price:899, royalty:'90%',  labelField:false, artistCounter:false },
+  'single-artist' : { name:'Single Artist', sub:'per year · unlimited releases', price:1439, royalty:'100%', labelField:false, artistCounter:false },
+  'double-artist' : { name:'Double Artist', sub:'per year · 2 artists',    price:2699, royalty:'100%', labelField:true, artistCounter:false },
+  'label'         : { name:'Label Plan',    sub:'per year · min. 5 artists', price:6300, royalty:'100%', labelField:true, artistCounter:true }
 };
 
 const PER_ARTIST = 1260;
@@ -54,13 +54,10 @@ export default function Checkout() {
   const extraArtists = p.artistCounter ? Math.max(0, artistCount - 5) : 0;
   const extras = extraArtists * PER_ARTIST;
   const total = base + extras;
-  const savings = p.artistCounter ? (p.origPrice - p.price) : (p.origPrice - p.price);
-
   const baseLabel = p.artistCounter ? 'Base plan (5 artists)' : 'Plan price';
   const basePriceText = '₹' + base.toLocaleString('en-IN');
   const extraLabelText = 'Extra artists (' + extraArtists + ' × ₹' + PER_ARTIST.toLocaleString('en-IN') + ')';
   const extraPriceText = '₹' + extras.toLocaleString('en-IN');
-  const savingsText = savings > 0 ? '−₹' + savings.toLocaleString('en-IN') : '—';
   const totalText = total === 0 ? 'Free' : '₹' + total.toLocaleString('en-IN');
 
   function changeArtists(delta) {
@@ -247,7 +244,6 @@ export default function Checkout() {
               </div>
 
               <div>
-                <span className="discount-badge">✦ 10% OFF — Anniversary Special</span>
                 <span className="royalty-badge" id="summaryRoyalty">★ {p.royalty} Royalties</span>
               </div>
 
@@ -259,10 +255,6 @@ export default function Checkout() {
                 <div className="summary-line cond-field" id="summaryExtraLine" style={{ display: p.artistCounter ? 'flex' : 'none' }}>
                   <span id="summaryExtraLabel">{extraLabelText}</span>
                   <strong id="summaryExtraPrice">{extraPriceText}</strong>
-                </div>
-                <div className="summary-line">
-                  <span>10% discount applied</span>
-                  <span className="or" id="summarySavings">{savingsText}</span>
                 </div>
               </div>
 

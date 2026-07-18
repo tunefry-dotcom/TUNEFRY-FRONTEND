@@ -153,22 +153,6 @@ export default function Pricing() {
         <div className="gad-inner"><span>Google Ad (728×90)</span></div>
       </div>
 
-      {/* ── PROMO BANNER ── */}
-      <div className="promo-banner">
-        <div className="promo-banner-inner">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ fontSize: 24 }}>🎉</div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-d)', fontSize: 15, fontWeight: 700, color: 'var(--or)' }}>
-                4th Year Anniversary Special — Flat 10% Off All Plans!
-              </div>
-              <div style={{ fontSize: 12.5, color: 'var(--t2)', marginTop: 2 }}>Discount automatically applied at checkout. Limited time offer.</div>
-            </div>
-          </div>
-          <div className="promo-badge">10% OFF</div>
-        </div>
-      </div>
-
       {/* ── PLANS ── */}
       <section className="plans-sec">
         <div className="plans-sec-head au">

@@ -126,7 +126,6 @@ export default function YourPlan() {
               <div className="yp-card-icon">{p.icon}</div>
               <div className="yp-card-name">{p.name}</div>
               <div className="yp-card-tag">{p.tag}</div>
-              {p.priceStrike && <div className="yp-price-strike">{p.priceStrike}</div>}
               <div className="yp-price">₹{p.price}</div>
               <div className="yp-per">{p.per}</div>
               <div className={`yp-royalty ${p.royalty.cls}`}>{p.royalty.text}</div>

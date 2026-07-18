@@ -6,7 +6,7 @@
 export const PLANS = [
   {
     id: 'free', name: 'Free', tag: 'Get started at zero cost',
-    priceStrike: null, price: '0', per: 'forever free',
+    price: '0', per: 'forever free',
     royalty: { cls: 'or', text: '★ 75% royalties' },
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>,
     feats: [
@@ -33,7 +33,7 @@ export const PLANS = [
   },
   {
     id: 'single-song', name: 'Single Song', tag: 'Perfect for one release',
-    priceStrike: '₹299', price: '269', per: 'per song',
+    price: '269', per: 'per song',
     royalty: { cls: 'or', text: '★ 85% royalties' },
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3z"/><path d="M3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>,
     feats: [
@@ -60,7 +60,7 @@ export const PLANS = [
   },
   {
     id: 'starter', name: 'Starter', tag: 'More releases, growing control',
-    priceStrike: '₹999', price: '899', per: 'per year · unlimited releases',
+    price: '899', per: 'per year · unlimited releases',
     royalty: { cls: 'or', text: '★ 90% royalties' },
     badge: <div style={{ display:'inline-flex',alignItems:'center',gap:6,background:'rgba(45,202,114,0.12)',border:'0.5px solid rgba(45,202,114,0.3)',borderRadius:100,padding:'4px 12px',fontSize:10.5,fontWeight:600,color:'#2DCA72',marginBottom:8,width:'fit-content' }}>✦ Newly Added</div>,
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>,
@@ -89,7 +89,7 @@ export const PLANS = [
   },
   {
     id: 'single-artist', name: 'Single Artist', tag: 'For serious independent artists', pop: true,
-    priceStrike: '₹1,599', price: '1,439', per: 'per year · unlimited releases',
+    price: '1,439', per: 'per year · unlimited releases',
     royalty: { cls: 'gr', text: '✓ 100% royalties' },
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 013 3v7a3 3 0 01-6 0V5a3 3 0 013-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
     feats: [
@@ -115,7 +115,7 @@ export const PLANS = [
   },
   {
     id: 'double-artist', name: 'Double Artist', tag: 'For duos & collaborators',
-    priceStrike: '₹2,999', price: '2,699', per: 'per year · 2 artists',
+    price: '2,699', per: 'per year · 2 artists',
     royalty: { cls: 'gr', text: '✓ 100% royalties' },
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
     feats: [
@@ -141,7 +141,7 @@ export const PLANS = [
   },
   {
     id: 'label', name: 'Label Plan', tag: 'Scale your roster', hasInfo: true,
-    priceStrike: '₹7,000', price: '6,300', per: 'per year · up to 5 artists',
+    price: '6,300', per: 'per year · up to 5 artists',
     royalty: { cls: 'gr', text: '✓ 100% royalties' },
     royaltyNote: 'Max 5 artists included',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg>,
