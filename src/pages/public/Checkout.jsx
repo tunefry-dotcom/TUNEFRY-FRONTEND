@@ -5,11 +5,11 @@ import '../../styles/checkout.css';
 // ── Plan Data ──────────────────────────────────────────────
 const PLANS = {
   'free'          : { name:'Free',          sub:'forever free · 1 artist', price:0, royalty:'75%',  labelField:false, artistCounter:false },
-  'single-song'   : { name:'Single Song',   sub:'one-time · per song',     price:269, royalty:'85%',  labelField:false, artistCounter:false },
-  'starter'       : { name:'Starter',       sub:'per year · unlimited releases', price:899, royalty:'90%',  labelField:false, artistCounter:false },
-  'single-artist' : { name:'Single Artist', sub:'per year · unlimited releases', price:1439, royalty:'100%', labelField:false, artistCounter:false },
-  'double-artist' : { name:'Double Artist', sub:'per year · 2 artists',    price:2699, royalty:'100%', labelField:true, artistCounter:false },
-  'label'         : { name:'Label Plan',    sub:'per year · min. 5 artists', price:6300, royalty:'100%', labelField:true, artistCounter:true }
+  'single-song'   : { name:'Single Song',   sub:'one-time · per song',     price:299, royalty:'85%',  labelField:false, artistCounter:false },
+  'starter'       : { name:'Starter',       sub:'per year · unlimited releases', price:999, royalty:'90%',  labelField:false, artistCounter:false },
+  'single-artist' : { name:'Single Artist', sub:'per year · unlimited releases', price:1599, royalty:'100%', labelField:false, artistCounter:false },
+  'double-artist' : { name:'Double Artist', sub:'per year · 2 artists',    price:2999, royalty:'100%', labelField:true, artistCounter:false },
+  'label'         : { name:'Label Plan',    sub:'per year · min. 5 artists', price:6999, royalty:'100%', labelField:true, artistCounter:true }
 };
 
 const PER_ARTIST = 1260;
