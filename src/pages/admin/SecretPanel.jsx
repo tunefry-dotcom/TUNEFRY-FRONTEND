@@ -181,8 +181,9 @@ function UsersView({ secret, onSessionExpired }) {
   const [deletingId, setDeletingId] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true); setError('')
+  const fetchUsers = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    setError('')
     try {
       const res = await fetch(`${BASE}/admin/users`, { headers: { 'X-Admin-Secret': secret } })
       if (res.status === 403) { onSessionExpired(); return }
@@ -190,10 +191,17 @@ function UsersView({ secret, onSessionExpired }) {
       const data = await res.json()
       setUsers(data.users); setTotal(data.total)
     } catch (e) { setError(e.message) }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [secret, onSessionExpired])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
+
+  // Silent background poll every 30 s — picks up plan changes from payments
+  // without showing the loading spinner or blanking the list.
+  useEffect(() => {
+    const id = setInterval(() => fetchUsers(true), 30_000)
+    return () => clearInterval(id)
+  }, [fetchUsers])
 
   const handleDelete = async (uid) => {
     setDeleteLoading(true)
