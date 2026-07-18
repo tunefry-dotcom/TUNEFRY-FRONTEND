@@ -5,11 +5,16 @@ const STORAGE_KEY = 'tunefry_admin_secret'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const PLAN_COLORS = {
-  free:          { bg: '#1a1a1a', text: '#9ca3af', border: '#374151' },
-  starter:       { bg: '#052e16', text: '#4ade80', border: '#166534' },
-  single_artist: { bg: '#1e1b4b', text: '#818cf8', border: '#3730a3' },
-  double_artist: { bg: '#1c1002', text: '#fbbf24', border: '#92400e' },
-  label:         { bg: '#2d0a0a', text: '#f87171', border: '#7f1d1d' },
+  'free':          { bg: '#1a1a1a', text: '#9ca3af', border: '#374151' },
+  'single-song':   { bg: '#052e16', text: '#4ade80', border: '#166534' },
+  'starter':       { bg: '#052e16', text: '#4ade80', border: '#166534' },
+  'single-artist': { bg: '#052e16', text: '#4ade80', border: '#166534' },
+  'double-artist': { bg: '#052e16', text: '#4ade80', border: '#166534' },
+  'label':         { bg: '#052e16', text: '#4ade80', border: '#166534' },
+}
+const PLAN_NAMES = {
+  'free': 'Free', 'single-song': 'Single Song', 'starter': 'Starter',
+  'single-artist': 'Single Artist', 'double-artist': 'Double Artist', 'label': 'Label Plan',
 }
 
 const TYPE_LABELS = {
@@ -215,7 +220,12 @@ function UsersView({ secret, onSessionExpired }) {
       })
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) throw new Error((await res.json()).detail || 'Save failed')
-      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editForm } : u))
+      const data = await res.json()
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? {
+        ...u, ...editForm,
+        plan: editForm.plan || u.plan,
+        plan_name: data.plan_name || PLAN_NAMES[editForm.plan] || u.plan_name,
+      } : u))
       setEditMsg('Saved!')
       setTimeout(() => setEditingUser(null), 800)
     } catch (e) { setEditMsg(e.message) }
@@ -255,7 +265,7 @@ function UsersView({ secret, onSessionExpired }) {
                 <span>User</span><span>Artist Name</span><span>Phone</span><span>Plan</span><span>Joined</span><span>Last Sign In</span><span>Actions</span>
               </div>
               {filtered.map((u, i) => {
-                const ps = PLAN_COLORS[u.plan] || PLAN_COLORS.free
+                const ps = PLAN_COLORS[u.plan] || PLAN_COLORS['free']
                 return (
                   <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.1fr 1.2fr 1fr 1fr 90px', padding: '.85rem 1.1rem', alignItems: 'center', borderBottom: i < filtered.length - 1 ? '1px solid #161616' : 'none' }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#161616')}
@@ -283,6 +293,7 @@ function UsersView({ secret, onSessionExpired }) {
                             bio: u.bio || '', spotify_url: u.spotify_url || '',
                             apple_music_url: u.apple_music_url || '',
                             instagram: u.instagram || '', youtube_url: u.youtube_url || '',
+                            plan: u.plan || 'free',
                           })
                           setEditMsg('')
                         }}
@@ -308,36 +319,56 @@ function UsersView({ secret, onSessionExpired }) {
           )}
       </div>
       {editingUser && (
-        <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 11, padding: '1.25rem 1.5rem', margin: '0 1.75rem 1.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ color: '#f0f0f0', margin: 0, fontSize: '1rem', fontWeight: 600 }}>Edit · {editingUser.email}</h3>
-            <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>✕</button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', marginBottom: '1rem' }}>
-            {[
-              ['Full Name', 'full_name'], ['Artist Name', 'artist_name'], ['Phone', 'phone'],
-              ['City', 'city'], ['State', 'state'], ['Date of Birth', 'date_of_birth'],
-              ['Gender', 'gender'], ['Instagram', 'instagram'], ['YouTube URL', 'youtube_url'],
-              ['Spotify URL', 'spotify_url'], ['Apple Music URL', 'apple_music_url'],
-            ].map(([label, key]) => (
-              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>{label}</span>
-                <input value={editForm[key] || ''} onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
-                  style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none' }} />
-              </label>
-            ))}
-          </div>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '1rem' }}>
-            <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>Bio</span>
-            <textarea value={editForm.bio || ''} onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))} rows={3}
-              style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', resize: 'vertical' }} />
-          </label>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button onClick={handleEditSave} disabled={editSaving}
-              style={{ padding: '.5rem 1.2rem', borderRadius: 8, border: 'none', background: '#ff6b2b', color: '#fff', fontWeight: 600, fontSize: '.85rem', cursor: editSaving ? 'default' : 'pointer', opacity: editSaving ? .6 : 1 }}>
-              {editSaving ? 'Saving…' : 'Save Changes'}
-            </button>
-            {editMsg && <span style={{ color: editMsg === 'Saved!' ? '#4ade80' : '#f87171', fontSize: '.84rem' }}>{editMsg}</span>}
+        <div onClick={(e) => { if (e.target === e.currentTarget) setEditingUser(null) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+          <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 14, padding: '1.5rem', width: '100%', maxWidth: 620, maxHeight: '90vh', overflow: 'auto' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ color: '#f0f0f0', margin: '0 0 .2rem', fontSize: '1.05rem', fontWeight: 600 }}>Edit User</h3>
+                <div style={{ color: '#6b7280', fontSize: '.8rem' }}>{editingUser.email}</div>
+              </div>
+              <button onClick={() => setEditingUser(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1, padding: '0 0 0 1rem' }}>✕</button>
+            </div>
+
+            {/* Plan selector */}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '1.1rem' }}>
+              <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>Plan</span>
+              <select value={editForm.plan || 'free'} onChange={e => setEditForm(p => ({ ...p, plan: e.target.value }))}
+                style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', cursor: 'pointer' }}>
+                {Object.entries(PLAN_NAMES).map(([slug, name]) => (
+                  <option key={slug} value={slug}>{name}</option>
+                ))}
+              </select>
+            </label>
+
+            {/* Profile fields */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', marginBottom: '1rem' }}>
+              {[
+                ['Full Name', 'full_name'], ['Artist Name', 'artist_name'], ['Phone', 'phone'],
+                ['City', 'city'], ['State', 'state'], ['Date of Birth', 'date_of_birth'],
+                ['Gender', 'gender'], ['Instagram', 'instagram'], ['YouTube URL', 'youtube_url'],
+                ['Spotify URL', 'spotify_url'], ['Apple Music URL', 'apple_music_url'],
+              ].map(([label, key]) => (
+                <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>{label}</span>
+                  <input value={editForm[key] || ''} onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
+                    style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none' }} />
+                </label>
+              ))}
+            </div>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '1.25rem' }}>
+              <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>Bio</span>
+              <textarea value={editForm.bio || ''} onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))} rows={3}
+                style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', resize: 'vertical' }} />
+            </label>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button onClick={handleEditSave} disabled={editSaving}
+                style={{ padding: '.5rem 1.2rem', borderRadius: 8, border: 'none', background: '#ff6b2b', color: '#fff', fontWeight: 600, fontSize: '.85rem', cursor: editSaving ? 'default' : 'pointer', opacity: editSaving ? .6 : 1 }}>
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+              {editMsg && <span style={{ color: editMsg === 'Saved!' ? '#4ade80' : '#f87171', fontSize: '.84rem' }}>{editMsg}</span>}
+            </div>
           </div>
         </div>
       )}
@@ -391,7 +422,7 @@ function DetailModal({ sub, secret, onClose, onReviewed }) {
 
   const data = sub.data || {}
   const typeInfo = TYPE_LABELS[sub.submission_type] || { label: sub.submission_type, color: '#9ca3af' }
-  const ps = PLAN_COLORS[sub.user_plan] || PLAN_COLORS.free
+  const ps = PLAN_COLORS[sub.user_plan] || PLAN_COLORS['free']
 
   // Fields to skip in the generic display
   const SKIP = new Set(['submission_type'])
@@ -405,7 +436,7 @@ function DetailModal({ sub, secret, onClose, onReviewed }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 700, background: `${typeInfo.color}22`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44` }}>{typeInfo.label}</span>
-              <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: ps.bg, color: ps.text, border: `1px solid ${ps.border}` }}>{sub.user_plan}</span>
+              <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: ps.bg, color: ps.text, border: `1px solid ${ps.border}` }}>{PLAN_NAMES[sub.user_plan] || sub.user_plan}</span>
               {sub.status !== 'pending' && (
                 <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: sub.status === 'approved' ? '#052e16' : '#2d0a0a', color: sub.status === 'approved' ? '#4ade80' : '#f87171', border: `1px solid ${sub.status === 'approved' ? '#166534' : '#7f1d1d'}` }}>{sub.status}</span>
               )}
@@ -556,7 +587,7 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
               {submissions.map((sub) => {
                 const isReviewed = sub.status !== 'pending'
                 const typeInfo = TYPE_LABELS[sub.submission_type] || { label: sub.submission_type, color: '#9ca3af' }
-                const ps = PLAN_COLORS[sub.user_plan] || PLAN_COLORS.free
+                const ps = PLAN_COLORS[sub.user_plan] || PLAN_COLORS['free']
                 return (
                   <div key={sub.id} onClick={() => setSelected(sub)}
                     style={{ background: isReviewed ? '#0d0d0d' : '#111', border: `1px solid ${isReviewed ? '#161616' : '#1f1f1f'}`, borderRadius: 10, padding: '1rem 1.1rem', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', opacity: isReviewed ? 0.55 : 1, transition: 'all .15s', filter: isReviewed ? 'grayscale(0.4)' : 'none' }}
@@ -574,7 +605,7 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
                     {/* Badges */}
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                       <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 700, background: `${typeInfo.color}22`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44` }}>{typeInfo.label}</span>
-                      <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: ps.bg, color: ps.text, border: `1px solid ${ps.border}` }}>{sub.user_plan}</span>
+                      <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: ps.bg, color: ps.text, border: `1px solid ${ps.border}` }}>{PLAN_NAMES[sub.user_plan] || sub.user_plan}</span>
                       {sub.status === 'approved' && <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: '#052e16', color: '#4ade80', border: '1px solid #166534' }}>Approved</span>}
                       {sub.status === 'declined' && <span style={{ padding: '.18rem .55rem', borderRadius: 5, fontSize: '.72rem', fontWeight: 600, background: '#2d0a0a', color: '#f87171', border: '1px solid #7f1d1d' }}>Declined</span>}
                     </div>
