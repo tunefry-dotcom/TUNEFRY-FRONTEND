@@ -35,6 +35,10 @@ export default function Profile() {
   })
 
   const [errors, setErrors] = useState({})
+  // Once a Spotify/Apple Music URL is saved it's permanently locked —
+  // users can enter it once but cannot change it afterwards.
+  const [lockedSpotify, setLockedSpotify] = useState(false)
+  const [lockedApple, setLockedApple] = useState(false)
 
   // Load the real profile on mount; seed email from the auth user.
   useEffect(() => {
@@ -42,6 +46,8 @@ export default function Profile() {
     getProfile()
       .then((p) => {
         if (!active) return
+        setLockedSpotify(!!p.spotify_url)
+        setLockedApple(!!p.apple_music_url)
         setForm((f) => ({
           ...f,
           fullName: p.full_name || user?.full_name || '',
@@ -103,6 +109,9 @@ export default function Profile() {
         youtube_url: form.youtube,
       })
       showToast('success', 'Profile saved successfully!')
+      // Lock Spotify / Apple Music fields immediately if a value was just saved.
+      if (form.spotify) setLockedSpotify(true)
+      if (form.appleMusicUrl) setLockedApple(true)
       if (fromUpgrade && saved.is_complete) {
         setTimeout(() => navigate('/plan', { state: { plan: upgradePlan } }), 1200)
       }
@@ -225,28 +234,28 @@ export default function Profile() {
           <div className="pf-divider" />
           <div className="pf-section-heading">Social Links</div>
 
-          {/* Spotify — read-only, set via admin verification workflow */}
+          {/* Spotify — editable once; permanently locked after first save */}
           <div className="pf-form-group">
             <label className="pf-form-label">
               Spotify Profile URL
-              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#6b7280', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '1px 6px' }}>Set by Tunefry team</span>
+              {lockedSpotify && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#6b7280', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '1px 6px' }}>Locked</span>}
             </label>
             <input type="url" className="pf-form-input" value={form.spotify}
-              readOnly disabled
-              placeholder="Will appear here once verified"
-              style={{ cursor: 'default', opacity: form.spotify ? 1 : 0.45 }} />
+              onChange={lockedSpotify ? undefined : (e) => setForm(f => ({ ...f, spotify: e.target.value }))}
+              disabled={lockedSpotify}
+              placeholder="https://open.spotify.com/artist/..." />
           </div>
 
-          {/* Apple Music — read-only, set via admin verification workflow */}
+          {/* Apple Music — editable once; permanently locked after first save */}
           <div className="pf-form-group">
             <label className="pf-form-label">
               Apple Music Profile URL
-              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#6b7280', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '1px 6px' }}>Set by Tunefry team</span>
+              {lockedApple && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#6b7280', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '1px 6px' }}>Locked</span>}
             </label>
             <input type="url" className="pf-form-input" value={form.appleMusicUrl}
-              readOnly disabled
-              placeholder="Will appear here once verified"
-              style={{ cursor: 'default', opacity: form.appleMusicUrl ? 1 : 0.45 }} />
+              onChange={lockedApple ? undefined : (e) => setForm(f => ({ ...f, appleMusicUrl: e.target.value }))}
+              disabled={lockedApple}
+              placeholder="https://music.apple.com/artist/..." />
           </div>
 
           {/* Instagram */}
