@@ -35,8 +35,6 @@ export default function Profile() {
   })
 
   const [errors, setErrors] = useState({})
-  const [savedSpotify, setSavedSpotify] = useState(false)
-  const [savedAppleMusic, setSavedAppleMusic] = useState(false)
 
   // Load the real profile on mount; seed email from the auth user.
   useEffect(() => {
@@ -44,8 +42,6 @@ export default function Profile() {
     getProfile()
       .then((p) => {
         if (!active) return
-        setSavedSpotify(!!p.spotify_url)
-        setSavedAppleMusic(!!p.apple_music_url)
         setForm((f) => ({
           ...f,
           fullName: p.full_name || user?.full_name || '',
@@ -229,22 +225,28 @@ export default function Profile() {
           <div className="pf-divider" />
           <div className="pf-section-heading">Social Links</div>
 
-          {/* Spotify */}
+          {/* Spotify — read-only, set via admin verification workflow */}
           <div className="pf-form-group">
-            <label className="pf-form-label">Spotify Profile URL</label>
+            <label className="pf-form-label">
+              Spotify Profile URL
+              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#6b7280', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '1px 6px' }}>Set by Tunefry team</span>
+            </label>
             <input type="url" className="pf-form-input" value={form.spotify}
-              onChange={savedSpotify ? undefined : set('spotify')}
-              disabled={savedSpotify}
-              placeholder="https://open.spotify.com/artist/..." />
+              readOnly disabled
+              placeholder="Will appear here once verified"
+              style={{ cursor: 'default', opacity: form.spotify ? 1 : 0.45 }} />
           </div>
 
-          {/* Apple Music */}
+          {/* Apple Music — read-only, set via admin verification workflow */}
           <div className="pf-form-group">
-            <label className="pf-form-label">Apple Music Profile URL</label>
+            <label className="pf-form-label">
+              Apple Music Profile URL
+              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#6b7280', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 4, padding: '1px 6px' }}>Set by Tunefry team</span>
+            </label>
             <input type="url" className="pf-form-input" value={form.appleMusicUrl}
-              onChange={savedAppleMusic ? undefined : set('appleMusicUrl')}
-              disabled={savedAppleMusic}
-              placeholder="https://music.apple.com/artist/..." />
+              readOnly disabled
+              placeholder="Will appear here once verified"
+              style={{ cursor: 'default', opacity: form.appleMusicUrl ? 1 : 0.45 }} />
           </div>
 
           {/* Instagram */}
