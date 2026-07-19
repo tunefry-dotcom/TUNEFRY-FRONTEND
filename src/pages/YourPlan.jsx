@@ -38,8 +38,21 @@ export default function YourPlan() {
   }
 
   async function handleSelectFree() {
-    setPlanChosen('free')
-    showToast('success', 'Free plan activated! You can upgrade anytime.')
+    setBusyPlan('free')
+    try {
+      const res = await fetch('https://backend1-xzx5.onrender.com/billing/select-free', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Failed to activate free plan')
+      setPlanChosen('free')
+      await refreshUser()
+      showToast('success', 'Free plan activated! You can upgrade anytime.')
+    } catch (err) {
+      showToast('error', err.message || 'Something went wrong.')
+    } finally {
+      setBusyPlan(null)
+    }
   }
 
   async function handleUpgrade(planId) {
@@ -118,7 +131,7 @@ export default function YourPlan() {
           const hasActivePaid = !user?.isFree && !isExpired
 
           // When plan is expired every card is selectable (same plan too)
-          const canChoose = isExpired ? true : (isCurrent && p.id === 'free') || isUpgrade
+          const canChoose = isExpired ? true : isUpgrade
 
           return (
             <div key={p.id} className={`yp-card${p.pop ? ' pop' : ''}${isCurrent && !isExpired ? ' current' : ''}`}>
@@ -145,7 +158,7 @@ export default function YourPlan() {
                 >
                   {busyPlan === p.id ? 'Processing…' : 'Choose Plan'}
                 </button>
-              ) : isCurrent && hasActivePaid ? (
+              ) : isCurrent ? (
                 <button className="yp-cta current" disabled>Current Plan</button>
               ) : (
                 <button className="yp-cta included" disabled>Not Available</button>

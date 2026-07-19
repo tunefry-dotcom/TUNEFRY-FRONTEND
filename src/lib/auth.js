@@ -25,13 +25,14 @@ export async function getCurrentUser() {
           status: billing.status,
           expiresAt: billing.expires_at,
           daysRemaining: billing.days_remaining,
+          planConfirmed: billing.plan_confirmed ?? false,
         }
       } catch {
         // billing JSON parse failed — fall through to safe default
       }
     }
 
-    return { ...user, plan: 'free', planName: 'Free', entitlements: {}, upgradeHints: {}, isFree: true }
+    return { ...user, plan: 'free', planName: 'Free', entitlements: {}, upgradeHints: {}, isFree: true, planConfirmed: false }
   } catch {
     return null
   }

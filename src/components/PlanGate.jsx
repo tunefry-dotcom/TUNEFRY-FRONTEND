@@ -13,6 +13,32 @@ export default function PlanGate({ feature, title = 'This feature', children }) 
   const { user } = useAuth()
   const navigate = useNavigate()
 
+  if (!user?.planConfirmed) {
+    return (
+      <div className="plan-gate">
+        <div className="plan-gate-card glass-card">
+          <div className="plan-gate-icon">
+            <svg viewBox="0 0 24 24">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </div>
+          <div className="plan-gate-badge">Choose a plan first</div>
+          <h1 className="plan-gate-title">Select a plan to get started</h1>
+          <p className="plan-gate-sub">Pick a plan — even the free one — before you can upload music.</p>
+          <div className="plan-gate-actions">
+            <button className="plan-gate-btn primary" onClick={() => navigate('/your-plan')}>
+              <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              Choose Plan
+            </button>
+            <button className="plan-gate-btn ghost" onClick={() => navigate('/')}>
+              Back to Overview
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (canAccess(user, feature)) return children
 
   const requiredPlanId = user?.upgradeHints?.[feature]
