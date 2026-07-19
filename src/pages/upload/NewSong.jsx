@@ -530,11 +530,11 @@ export default function NewSong() {
                     onChange={(e) => updateMainArtist(a.key, 'name', e.target.value)} /></div>
                 <div className="form-group"><label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist && !profileData?.spotify_url ? <span className="req">*</span> : i === 0 && profileData?.spotify_url ? null : <span className="opt-tag">(optional)</span>}</label>
                   <input type="url" className="form-input" name={`main_artists[${i}][spotify]`} placeholder="https://open.spotify.com/artist/..." value={a.spotify}
-                    disabled={i === 0 && !!profileData?.spotify_url}
+                    disabled={i === 0 && (!!profileData?.spotify_url || isNewArtist)}
                     onChange={(e) => updateMainArtist(a.key, 'spotify', e.target.value)} /></div>
                 <div className="form-group"><label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist && !profileData?.apple_music_url ? <span className="req">*</span> : i === 0 && profileData?.apple_music_url ? null : <span className="opt-tag">(optional)</span>}</label>
                   <input type="url" className="form-input" name={`main_artists[${i}][apple_music]`} placeholder="https://music.apple.com/artist/..." value={a.apple_music}
-                    disabled={i === 0 && !!profileData?.apple_music_url}
+                    disabled={i === 0 && (!!profileData?.apple_music_url || isNewArtist)}
                     onChange={(e) => updateMainArtist(a.key, 'apple_music', e.target.value)} /></div>
                 <div className="form-group col-span-2"><label className="form-label">Instagram <span className="opt-tag">(optional)</span></label>
                   <input type="url" className="form-input" name={`main_artists[${i}][instagram]`} placeholder="https://www.instagram.com/artist/..." value={a.instagram} onChange={(e) => updateMainArtist(a.key, 'instagram', e.target.value)} /></div>

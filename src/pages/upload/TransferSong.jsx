@@ -370,13 +370,13 @@ export default function TransferSong() {
                 <div className="form-group">
                   <label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist && !profileData?.spotify_url ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
                   <input className="form-input" type="url" placeholder="https://open.spotify.com/artist/..." value={artist.spotify}
-                    disabled={i === 0 && !!profileData?.spotify_url}
+                    disabled={i === 0 && (!!profileData?.spotify_url || isNewArtist)}
                     onChange={(e) => updateMainArtist(i, 'spotify', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist && !profileData?.apple_music_url ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
                   <input className="form-input" type="url" placeholder="https://music.apple.com/artist/..." value={artist.apple_music}
-                    disabled={i === 0 && !!profileData?.apple_music_url}
+                    disabled={i === 0 && (!!profileData?.apple_music_url || isNewArtist)}
                     onChange={(e) => updateMainArtist(i, 'apple_music', e.target.value)} />
                 </div>
                 <div className="form-group col-span-2">

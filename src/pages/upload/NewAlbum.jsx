@@ -440,12 +440,12 @@ function ynClass(base, isYes) {
   }
 }
 
-function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, locked }) {
+function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, locked, isNewArtist }) {
   const isMain = type === 'main'
   const title = isMain ? `Main Artist #${num}` : `Featured Artist #${num}`
   const lockName    = isMain && !!locked?.artist_name
-  const lockSpotify = isMain && !!locked?.spotify_url
-  const lockApple   = isMain && !!locked?.apple_music_url
+  const lockSpotify = isMain && (!!locked?.spotify_url || isNewArtist)
+  const lockApple   = isMain && (!!locked?.apple_music_url || isNewArtist)
   return (
     <div className="artist-group">
       <div className="artist-group-header">
@@ -562,7 +562,7 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
         <div>
           {song.mainArtists.map((a, i) => (
             <ArtistGroup key={a.key} song={song} type="main" artist={a} num={i + 1} updateArtist={updateArtist} removeArtist={removeArtist}
-              locked={songIndex === 0 && i === 0 ? profileData : null} />
+              locked={songIndex === 0 && i === 0 ? profileData : null} isNewArtist={songIndex === 0 && i === 0 ? isNewArtist : false} />
           ))}
         </div>
         {song.mainArtists.length === 0 && (

@@ -357,8 +357,8 @@ export default function TransferAlbum() {
     const isMain = type === 'main';
     const title = isMain ? 'Main Artist #' + num : 'Featured Artist #' + num;
     const lockName    = isMain && !!locked?.artist_name;
-    const lockSpotify = isMain && !!locked?.spotify_url;
-    const lockApple   = isMain && !!locked?.apple_music_url;
+    const lockSpotify = isMain && (!!locked?.spotify_url || isNewArtist);
+    const lockApple   = isMain && (!!locked?.apple_music_url || isNewArtist);
     return (
       <div className="artist-group" id={artist.id} key={artist.id}>
         <div className="artist-group-header">
