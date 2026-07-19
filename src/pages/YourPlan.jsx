@@ -131,7 +131,7 @@ export default function YourPlan() {
           const hasActivePaid = !user?.isFree && !isExpired
 
           // When plan is expired every card is selectable (same plan too)
-          const canChoose = isExpired ? true : isUpgrade
+          const canChoose = isExpired ? true : (!user?.planConfirmed && p.id === 'free') || isUpgrade
 
           return (
             <div key={p.id} className={`yp-card${p.pop ? ' pop' : ''}${isCurrent && !isExpired ? ' current' : ''}`}>
