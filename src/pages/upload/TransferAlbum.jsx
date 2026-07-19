@@ -58,7 +58,6 @@ function makeSong() {
     lyricist: '',
     callertuneTiming: '',
     callertuneCutName: '',
-    callertuneCutNameTouched: false,
     ytBeat: 'no',
     explicit: 'no',
     isrcNo: '',
@@ -474,7 +473,7 @@ export default function TransferAlbum() {
                 className="form-input"
                 placeholder="Song title"
                 value={song.songName}
-                onChange={(e) => { const v = e.target.value; updateSong(song.id, song.callertuneCutNameTouched ? { songName: v } : { songName: v, callertuneCutName: v }); }}
+                onChange={(e) => { const v = e.target.value; updateSong(song.id, { songName: v, callertuneCutName: v }); }}
               />
             </div>
           </div>
@@ -688,7 +687,7 @@ export default function TransferAlbum() {
                 className="form-input"
                 placeholder="Optional callertune name"
                 value={song.callertuneCutName}
-                onChange={(e) => updateSong(song.id, { callertuneCutName: e.target.value, callertuneCutNameTouched: true })}
+                disabled readOnly
               />
             </div>
             <div className="form-group">
