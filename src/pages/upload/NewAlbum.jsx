@@ -49,6 +49,7 @@ function makeSong() {
     lyricist: '',
     callertuneTiming: '',
     callertuneCutName: '',
+    callertuneCutNameTouched: false,
     ytBeat: false,
     explicit: false,
     mainArtists: [],
@@ -481,7 +482,7 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
       <div className="song-card-body">
         <div className="form-grid" style={{ marginTop: '16px' }}>
           <div className="form-group col-span-2"><label className="form-label">Song Name <span className="req">*</span></label>
-            <input type="text" className="form-input" placeholder="Song title" value={song.name} onChange={(e) => updateSong(song.key, { name: e.target.value })} /></div>
+            <input type="text" className="form-input" placeholder="Song title" value={song.name} onChange={(e) => { const v = e.target.value; updateSong(song.key, song.callertuneCutNameTouched ? { name: v } : { name: v, callertuneCutName: v }); }} /></div>
         </div>
         <div className="form-grid-3" style={{ marginTop: '16px' }}>
           <div className="form-group"><label className="form-label">Duration <span className="req">*</span></label>
@@ -536,7 +537,7 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
           <div className="form-group"><label className="form-label">Callertune Timing <span className="opt-tag">(optional)</span></label>
             <input type="text" className="form-input" placeholder="00:00" maxLength="5" value={song.callertuneTiming} onChange={(e) => updateSong(song.key, { callertuneTiming: e.target.value.replace(/[^0-9:]/g, '') })} /></div>
           <div className="form-group"><label className="form-label">Callertune Cut Name <span className="opt-tag">(optional)</span></label>
-            <input type="text" className="form-input" placeholder="Optional callertune name" value={song.callertuneCutName} onChange={(e) => updateSong(song.key, { callertuneCutName: e.target.value })} /></div>
+            <input type="text" className="form-input" placeholder="Optional callertune name" value={song.callertuneCutName} onChange={(e) => updateSong(song.key, { callertuneCutName: e.target.value, callertuneCutNameTouched: true })} /></div>
           <div className="form-group"><label className="form-label">YouTube Music / Beat <span className="req">*</span></label>
             <div className="yn-toggle">
               <button type="button" className={ytBeat.no} onClick={() => updateSong(song.key, { ytBeat: false })}>No</button>

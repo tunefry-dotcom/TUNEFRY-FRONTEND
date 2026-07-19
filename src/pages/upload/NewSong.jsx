@@ -138,6 +138,7 @@ export default function NewSong() {
   const [originalReleaseDate, setOriginalReleaseDate] = useState('');
   const [goLiveDate, setGoLiveDate] = useState('');
   const [callerTuneName, setCallerTuneName] = useState('');
+  const [callerTuneNameTouched, setCallerTuneNameTouched] = useState(false);
   const [callerTuneTime, setCallerTuneTime] = useState('');
   const [comments, setComments] = useState('');
   const [guidelinesCheck, setGuidelinesCheck] = useState(false);
@@ -471,7 +472,7 @@ export default function NewSong() {
               placeholder={titleError ? 'Song title is required!' : 'Enter track title'}
               required
               value={songTitle}
-              onChange={(e) => setSongTitle(e.target.value)}
+              onChange={(e) => { setSongTitle(e.target.value); if (!callerTuneNameTouched) setCallerTuneName(e.target.value); }}
               style={titleError ? { borderColor: '#3B82F6', boxShadow: '0 0 0 3px rgba(59,130,246,0.18)' } : undefined}
             />
           </div>
@@ -844,7 +845,7 @@ export default function NewSong() {
 
           <div className="form-group">
             <label className="form-label">Callertune Cut Name</label>
-            <input type="text" className="form-input" placeholder="Optional callertune name" id="callerTuneName" name="callertune_name" value={callerTuneName} onChange={(e) => setCallerTuneName(e.target.value)} />
+            <input type="text" className="form-input" placeholder="Optional callertune name" id="callerTuneName" name="callertune_name" value={callerTuneName} onChange={(e) => { setCallerTuneNameTouched(true); setCallerTuneName(e.target.value); }} />
             <span className="form-hint">Name for the callertune version (e.g., chorus, hook)</span>
           </div>
 

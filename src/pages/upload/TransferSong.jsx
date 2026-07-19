@@ -42,6 +42,7 @@ export default function TransferSong() {
   const [composer, setComposer] = useState('')
   const [lyricist, setLyricist] = useState('')
   const [callertuneName, setCallertuneName] = useState('')
+  const [callertuneNameTouched, setCallertuneNameTouched] = useState(false)
   const [callertuneTiming, setCallertuneTiming] = useState('')
   const [comments, setComments] = useState('')
 
@@ -319,7 +320,7 @@ export default function TransferSong() {
         <div className="form-grid">
           <div className="form-group">
             <label className="form-label">Title <span className="req">*</span></label>
-            <input className="form-input" id="songTitle" name="song_title" type="text" placeholder="Enter track title" required value={songTitle} onChange={(e) => setSongTitle(e.target.value)} style={markStyle('songTitle')} />
+            <input className="form-input" id="songTitle" name="song_title" type="text" placeholder="Enter track title" required value={songTitle} onChange={(e) => { setSongTitle(e.target.value); if (!callertuneNameTouched) setCallertuneName(e.target.value); }} style={markStyle('songTitle')} />
           </div>
           <div className="form-group">
             <label className="form-label">YouTube Beat / Music? <span className="req">*</span></label>
@@ -627,7 +628,7 @@ export default function TransferSong() {
         <div className="form-grid">
           <div className="form-group">
             <label className="form-label">Callertune Cut Name <span className="opt-tag">(optional)</span></label>
-            <input className="form-input" type="text" placeholder="Optional callertune name" value={callertuneName} onChange={(e) => setCallertuneName(e.target.value)} />
+            <input className="form-input" type="text" placeholder="Optional callertune name" value={callertuneName} onChange={(e) => { setCallertuneNameTouched(true); setCallertuneName(e.target.value); }} />
           </div>
           <div className="form-group">
             <label className="form-label">Callertune Timing <span className="opt-tag">(optional)</span></label>
