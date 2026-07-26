@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../../styles/new-song.css';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../lib/profile';
+import { canAccess, FEATURES } from '../../lib/billing';
 import { validateCoverArt, validateAudioFile, uploadToR2 } from '../../lib/r2upload';
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from '../../lib/config.js'
 
-const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: 5 }
+// Keys match the hyphenated plan values from /billing/me; label: Infinity = no ceiling
+const PLAN_MAX_ARTISTS = { free: 1, starter: 1, 'single-artist': 1, 'double-artist': 2, label: Infinity }
 const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const LANGUAGES = [
@@ -101,20 +103,6 @@ const SUBCATS = {
   ],
 };
 
-function getLabelPlanTier() {
-  const urlPlan = new URLSearchParams(window.location.search).get('plan');
-  const saved = localStorage.getItem('tunefryPlanTier');
-  const raw = (urlPlan || saved || '1599').toLowerCase().trim();
-  if (raw.indexOf('label') > -1) return 'label';
-  if (raw.indexOf('2999') > -1 || raw.indexOf('double') > -1) return '2999';
-  return '1599';
-}
-
-function isCustomLabelAllowed() {
-  const tier = getLabelPlanTier();
-  return tier === '2999' || tier === 'label';
-}
-
 export default function NewSong() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -163,8 +151,9 @@ export default function NewSong() {
   const [audioFile, setAudioFile] = useState(null);
   const [fileErrors, setFileErrors] = useState({ cover: '', audio: '' });
 
-  // Label name
-  const [customAllowed] = useState(isCustomLabelAllowed());
+  // Label name — editable for Double Artist / Label plans (server-validated entitlement)
+  const customAllowed = canAccess(user, FEATURES.CUSTOM_LABEL);
+  const [showLabelUpgrade, setShowLabelUpgrade] = useState(false);
   const [savedLabel, setSavedLabel] = useState(
     (localStorage.getItem('tunefryCustomLabelName') || '').trim()
   );
@@ -510,7 +499,7 @@ export default function NewSong() {
           </div>
           <button className="add-artist-btn" onClick={addMainArtist}
             disabled={mainArtists.length >= maxArtists}
-            title={mainArtists.length >= maxArtists ? `Your plan allows ${maxArtists} main artist(s). Upgrade to add more.` : undefined}>
+            title={mainArtists.length >= maxArtists ? `Your plan allows ${maxArtists === Infinity ? 'unlimited' : maxArtists} main artist(s).` : undefined}>
             <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Add Artist
           </button>
@@ -530,11 +519,11 @@ export default function NewSong() {
                     onChange={(e) => updateMainArtist(a.key, 'name', e.target.value)} /></div>
                 <div className="form-group"><label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist && !profileData?.spotify_url ? <span className="req">*</span> : i === 0 && profileData?.spotify_url ? null : <span className="opt-tag">(optional)</span>}</label>
                   <input type="url" className="form-input" name={`main_artists[${i}][spotify]`} placeholder="https://open.spotify.com/artist/..." value={a.spotify}
-                    disabled={i === 0 && (!!profileData?.spotify_url || isNewArtist)}
+                    disabled={i === 0 && (isNewArtist || (!customAllowed && !!profileData?.spotify_url))}
                     onChange={(e) => updateMainArtist(a.key, 'spotify', e.target.value)} /></div>
                 <div className="form-group"><label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist && !profileData?.apple_music_url ? <span className="req">*</span> : i === 0 && profileData?.apple_music_url ? null : <span className="opt-tag">(optional)</span>}</label>
                   <input type="url" className="form-input" name={`main_artists[${i}][apple_music]`} placeholder="https://music.apple.com/artist/..." value={a.apple_music}
-                    disabled={i === 0 && (!!profileData?.apple_music_url || isNewArtist)}
+                    disabled={i === 0 && (isNewArtist || (!customAllowed && !!profileData?.apple_music_url))}
                     onChange={(e) => updateMainArtist(a.key, 'apple_music', e.target.value)} /></div>
                 <div className="form-group col-span-2"><label className="form-label">Instagram <span className="opt-tag">(optional)</span></label>
                   <input type="url" className="form-input" name={`main_artists[${i}][instagram]`} placeholder="https://www.instagram.com/artist/..." value={a.instagram} onChange={(e) => updateMainArtist(a.key, 'instagram', e.target.value)} /></div>
@@ -548,14 +537,14 @@ export default function NewSong() {
             Click <strong style={{ color: 'var(--accent)' }}>Add Artist</strong> to add the main artist for this release
           </div>
         )}
-        {mainArtists.length >= maxArtists && (
+        {maxArtists !== Infinity && mainArtists.length >= maxArtists && (
           <p style={{ fontSize: '12px', color: '#f59e0b', margin: '8px 0 0', textAlign: 'right' }}>
             Plan limit reached ({maxArtists} main artist{maxArtists > 1 ? 's' : ''}). <Link to="/plan" style={{ color: '#f59e0b' }}>Upgrade</Link> to add more.
           </p>
         )}
 
-        {/* Permanent save notice — only on first-time entry (not yet in profile) */}
-        {!profileData?.spotify_url && (mainArtists[0]?.spotify || mainArtists[0]?.apple_music) ? (
+        {/* Permanent save notice — only for plans where URLs lock after first save */}
+        {!customAllowed && !profileData?.spotify_url && (mainArtists[0]?.spotify || mainArtists[0]?.apple_music) ? (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>
@@ -736,7 +725,10 @@ export default function NewSong() {
             <label className="form-label">Label Name <span className="req">*</span></label>
             <div id="labelNameWrapNewSong">
               {!customAllowed ? (
-                <input type="text" className="form-input" id="labelNameSelectNewSong" value="Tunefry" readOnly />
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input type="text" className="form-input" id="labelNameSelectNewSong" value="Tunefry" readOnly style={{ flex: 1 }} />
+                  <button type="button" onClick={() => setShowLabelUpgrade((v) => !v)} style={{ padding: '10px 12px', borderRadius: '10px', border: '0.5px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }} title="Custom label names require an upgrade">🔒</button>
+                </div>
               ) : !savedLabel ? (
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <input ref={labelSetupRef} type="text" className="form-input" id="labelNameSelectNewSongSetup" placeholder="Enter your label name (one-time setup)" value={labelSetupValue} onChange={(e) => setLabelSetupValue(e.target.value)} />
@@ -749,7 +741,14 @@ export default function NewSong() {
                 </select>
               )}
             </div>
-            <span className="form-hint">Free to 1599 plans are locked to Tunefry. 2999 and Label plans can use one custom label name, then choose from dropdown.</span>
+            {showLabelUpgrade && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 10, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>
+                  Custom label names are available on the <strong>Double Artist</strong> and <strong>Label</strong> plans. <Link to="/plan" style={{ color: '#EAB308', fontWeight: 600 }}>Upgrade →</Link>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

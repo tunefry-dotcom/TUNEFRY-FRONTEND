@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/profile-mismatch.css';
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from '../lib/config.js'
 
 export default function ProfileMismatch() {
   const navigate = useNavigate();

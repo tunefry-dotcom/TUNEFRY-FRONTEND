@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from '../../lib/config.js'
 const STORAGE_KEY = 'tunefry_admin_secret'
 
 // ── Helpers ────────────────────────────────────────────────────────────────

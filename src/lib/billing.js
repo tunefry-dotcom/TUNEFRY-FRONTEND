@@ -3,7 +3,7 @@
 // from the server (/billing/me) — these constants only name the features so the
 // route gates read clearly and avoid magic strings.
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from './config.js'
 
 export const FEATURES = {
   RELEASE_SINGLE: 'release_single',       // /upload/new-song

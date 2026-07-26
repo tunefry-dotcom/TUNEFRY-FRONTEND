@@ -1,7 +1,7 @@
 // Razorpay plan-upgrade helpers. The backend creates/verifies orders; this module
 // only opens the checkout widget and relays the result back for server verification.
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from './config.js'
 const RZP_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
 
 // Thrown when /billing/orders reports the profile isn't complete yet.

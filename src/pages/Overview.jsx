@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from '../lib/config.js'
 
 const VELOCITY_BARS = [
   { label: 'Spotify', height: 100, hot: false, delay: '0s' },

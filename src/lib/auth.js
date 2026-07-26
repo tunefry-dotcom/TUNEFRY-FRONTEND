@@ -1,4 +1,4 @@
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from './config.js'
 
 export async function getCurrentUser() {
   try {

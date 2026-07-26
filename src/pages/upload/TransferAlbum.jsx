@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../lib/profile';
 import { validateCoverArt, validateAudioFile } from '../../lib/r2upload';
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from '../../lib/config.js'
 
 const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: 5 }
 const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1

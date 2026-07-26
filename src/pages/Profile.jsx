@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getProfile, updateProfile } from '../lib/profile'
+import { canAccess, FEATURES } from '../lib/billing'
 import '../styles/profile.css'
 
 function Toast({ toast }) {
@@ -20,6 +21,7 @@ export default function Profile() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
+  const canEditUrls = canAccess(user, FEATURES.CUSTOM_LABEL)
   const [toast, setToast] = useState({ show: false, type: '', msg: '' })
   const [saving, setSaving] = useState(false)
 
@@ -44,8 +46,8 @@ export default function Profile() {
     getProfile()
       .then((p) => {
         if (!active) return
-        setLockedSpotify(!!p.spotify_url)
-        setLockedApple(!!p.apple_music_url)
+        setLockedSpotify(!canEditUrls && !!p.spotify_url)
+        setLockedApple(!canEditUrls && !!p.apple_music_url)
         setForm((f) => ({
           ...f,
           fullName: p.full_name || user?.full_name || '',
@@ -98,9 +100,9 @@ export default function Profile() {
         youtube_url: form.youtube,
       })
       showToast('success', 'Profile saved successfully!')
-      // Lock Spotify / Apple Music fields immediately if a value was just saved.
-      if (form.spotify) setLockedSpotify(true)
-      if (form.appleMusicUrl) setLockedApple(true)
+      // Lock Spotify / Apple Music fields immediately if a value was just saved (lower plans only).
+      if (!canEditUrls && form.spotify) setLockedSpotify(true)
+      if (!canEditUrls && form.appleMusicUrl) setLockedApple(true)
       if (fromUpgrade && saved.is_complete) {
         setTimeout(() => navigate('/plan', { state: { plan: upgradePlan } }), 1200)
       }

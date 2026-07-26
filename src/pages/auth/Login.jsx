@@ -18,7 +18,8 @@ export default function Login() {
     setLoading(true)
     try {
       await apiLogin(form.email, form.password)
-      await refreshUser()
+      const u = await refreshUser()
+      if (!u) { setError('Could not establish a session. Please try again.'); return }
       navigate('/', { replace: true })
     } catch (err) {
       setError(err.message)

@@ -1,6 +1,6 @@
 // Profile (basic details) API helpers.
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from './config.js'
 
 // Human labels for the required fields, so we can tell the user what's missing.
 export const FIELD_LABELS = {

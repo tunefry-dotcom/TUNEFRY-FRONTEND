@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import '../styles/claim-removal.css'
 
-const BASE = 'https://backend1-xzx5.onrender.com'
+import { API_BASE as BASE } from '../lib/config.js'
 
 export default function ClaimRemoval() {
   const navigate = useNavigate()
