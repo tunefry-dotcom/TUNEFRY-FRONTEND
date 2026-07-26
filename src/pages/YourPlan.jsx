@@ -30,8 +30,9 @@ export default function YourPlan() {
 
   if (loading) return <div className="yp-loading">Loading your plan…</div>
 
+  const notConfirmed = !user?.planConfirmed
   const currentRank = Math.max(0, PLANS.findIndex((p) => p.id === user?.plan))
-  const currentName = user?.planName || PLANS[currentRank]?.name || 'Free'
+  const currentName = notConfirmed ? 'No plan selected' : (user?.planName || PLANS[currentRank]?.name || 'Free')
 
   function setPlanChosen(planId) {
     try { localStorage.setItem(`tf_plan_chosen_${user?.id}`, planId) } catch { /* private */ }
@@ -107,15 +108,17 @@ export default function YourPlan() {
           <div className="yp-current-label">Current Plan</div>
           <div className="yp-current-name">{currentName}</div>
           <div className="yp-current-meta">
-            <span className={`yp-status ${(user?.status === 'active' || user?.isFree) ? 'active' : ''}`}>
+            <span className={`yp-status ${!notConfirmed && (user?.status === 'active' || user?.isFree) ? 'active' : ''}`}>
               <span className="yp-status-dot" />
-              {user?.status ? user.status[0].toUpperCase() + user.status.slice(1) : 'Active'}
+              {notConfirmed ? 'Not activated' : (user?.status ? user.status[0].toUpperCase() + user.status.slice(1) : 'Active')}
             </span>
-            {user?.isFree
-              ? <span className="yp-current-sub">Free forever</span>
-              : user?.daysRemaining != null
-                ? <span className="yp-current-sub">{user.daysRemaining} days remaining</span>
-                : null}
+            {notConfirmed
+              ? <span className="yp-current-sub">Choose a plan below to get started</span>
+              : user?.isFree
+                ? <span className="yp-current-sub">Free forever</span>
+                : user?.daysRemaining != null
+                  ? <span className="yp-current-sub">{user.daysRemaining} days remaining</span>
+                  : null}
           </div>
         </div>
       </div>
