@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getProfile, updateProfile } from '../lib/profile'
@@ -20,8 +20,6 @@ export default function Profile() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
-  const fileRef = useRef(null)
-  const [photoSrc, setPhotoSrc] = useState(null)
   const [toast, setToast] = useState({ show: false, type: '', msg: '' })
   const [saving, setSaving] = useState(false)
 
@@ -72,15 +70,6 @@ export default function Profile() {
   const showToast = (type, msg) => {
     setToast({ show: true, type, msg })
     setTimeout(() => setToast(t => ({ ...t, show: false })), 3500)
-  }
-
-  const handlePhoto = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) { showToast('error', 'File too large. Max 5MB.'); return }
-    const reader = new FileReader()
-    reader.onload = (ev) => setPhotoSrc(ev.target.result)
-    reader.readAsDataURL(file)
   }
 
   const saveProfile = async () => {
@@ -157,18 +146,9 @@ export default function Profile() {
         <div className="glass-card profile-form-card">
           {/* Photo */}
           <div className="profile-photo-wrap">
-            <div className="profile-photo-circle" onClick={() => fileRef.current?.click()}>
-              {photoSrc
-                ? <img src={photoSrc} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                : <span>V</span>
-              }
-              <div className="profile-photo-overlay">
-                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <span>Upload Photo</span>
-              </div>
+            <div className="profile-photo-circle">
+              <span>V</span>
             </div>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhoto} />
-            <span className="photo-hint">Click to upload · JPG, PNG, WebP · Max 5MB</span>
           </div>
 
           {/* Full Name / Artist Name */}
