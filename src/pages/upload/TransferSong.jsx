@@ -3,12 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import '../../styles/transfer-song.css'
 import { useAuth } from '../../context/AuthContext'
 import { getProfile, updateProfile } from '../../lib/profile'
+import { canAccess, FEATURES, planMaxArtists } from '../../lib/billing'
 import { validateCoverArt, validateAudioFile } from '../../lib/r2upload'
 
 import { API_BASE as BASE } from '../../lib/config.js'
-
-const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: 5 }
-const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const SUB_CATEGORIES = {
   'Hip-Hop/Rap': ['Alternative Hip-Hop', 'Conscious Hip-Hop', 'Country Rap', 'Emo Rap', 'Jazz Rap', 'Hip-Hop', 'Pop Rap', 'Trap'],
@@ -22,6 +20,7 @@ export default function TransferSong() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const maxArtists = planMaxArtists(user?.plan)
+  const customAllowed = canAccess(user, FEATURES.CUSTOM_LABEL)
 
   // Simple text/select field values (mirrors the original DOM element ids)
   const [upcCode, setUpcCode] = useState('')
@@ -370,13 +369,13 @@ export default function TransferSong() {
                 <div className="form-group">
                   <label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist && !profileData?.spotify_url ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
                   <input className="form-input" type="url" placeholder="https://open.spotify.com/artist/..." value={artist.spotify}
-                    disabled={i === 0 && (!!profileData?.spotify_url || isNewArtist)}
+                    disabled={i === 0 && (isNewArtist || (!customAllowed && !!profileData?.spotify_url))}
                     onChange={(e) => updateMainArtist(i, 'spotify', e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Apple Music Profile Link {i === 0 && !isNewArtist && !profileData?.apple_music_url ? <span className="req">*</span> : <span className="opt-tag">(optional)</span>}</label>
                   <input className="form-input" type="url" placeholder="https://music.apple.com/artist/..." value={artist.apple_music}
-                    disabled={i === 0 && (!!profileData?.apple_music_url || isNewArtist)}
+                    disabled={i === 0 && (isNewArtist || (!customAllowed && !!profileData?.apple_music_url))}
                     onChange={(e) => updateMainArtist(i, 'apple_music', e.target.value)} />
                 </div>
                 <div className="form-group col-span-2">
@@ -389,7 +388,7 @@ export default function TransferSong() {
         </div>
 
         {/* Permanent save notice — only on first-time entry */}
-        {!profileData?.spotify_url && (mainArtists[0]?.spotify || mainArtists[0]?.apple_music) && (
+        {!customAllowed && !profileData?.spotify_url && (mainArtists[0]?.spotify || mainArtists[0]?.apple_music) && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>These Spotify and Apple Music profile links will be <strong>permanently saved</strong> to your Tunefry profile.</p>

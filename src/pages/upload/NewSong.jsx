@@ -3,14 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../../styles/new-song.css';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../lib/profile';
-import { canAccess, FEATURES } from '../../lib/billing';
+import { canAccess, FEATURES, planMaxArtists } from '../../lib/billing';
 import { validateCoverArt, validateAudioFile, uploadToR2 } from '../../lib/r2upload';
+import UpgradeModal from '../../components/UpgradeModal';
 
 import { API_BASE as BASE } from '../../lib/config.js'
-
-// Keys match the hyphenated plan values from /billing/me; label: Infinity = no ceiling
-const PLAN_MAX_ARTISTS = { free: 1, starter: 1, 'single-artist': 1, 'double-artist': 2, label: Infinity }
-const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const LANGUAGES = [
   { value: '24', text: 'Hindi' },
@@ -727,7 +724,7 @@ export default function NewSong() {
               {!customAllowed ? (
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <input type="text" className="form-input" id="labelNameSelectNewSong" value="Tunefry" readOnly style={{ flex: 1 }} />
-                  <button type="button" onClick={() => setShowLabelUpgrade((v) => !v)} style={{ padding: '10px 12px', borderRadius: '10px', border: '0.5px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }} title="Custom label names require an upgrade">🔒</button>
+                  <button type="button" onClick={() => setShowLabelUpgrade(true)} style={{ padding: '10px 12px', borderRadius: '10px', border: '0.5px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }} title="Custom label names require an upgrade">🔒</button>
                 </div>
               ) : !savedLabel ? (
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -741,14 +738,12 @@ export default function NewSong() {
                 </select>
               )}
             </div>
-            {showLabelUpgrade && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 10, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>
-                  Custom label names are available on the <strong>Double Artist</strong> and <strong>Label</strong> plans. <Link to="/plan" style={{ color: '#EAB308', fontWeight: 600 }}>Upgrade →</Link>
-                </p>
-              </div>
-            )}
+            <UpgradeModal
+              open={showLabelUpgrade}
+              onClose={() => setShowLabelUpgrade(false)}
+              title="Custom label name"
+              message="Custom label names are available on the Double Artist and Label plans. Upgrade to release under your own label."
+            />
           </div>
         </div>
       </div>

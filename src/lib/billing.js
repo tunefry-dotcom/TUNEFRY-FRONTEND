@@ -26,6 +26,22 @@ export const PLAN_LABELS = {
   label: 'Label Plan',
 }
 
+// Max MAIN artists allowed per release, keyed by the hyphenated plan ids that
+// /billing/me returns (see backend PLAN_SPECS.max_artists). Single source of
+// truth — the upload forms import this instead of each keeping their own copy.
+export const PLAN_MAX_ARTISTS = {
+  free: 1,
+  'single-song': 1,
+  starter: 1,
+  'single-artist': 1,
+  'double-artist': 2,
+  label: 5,
+}
+
+export function planMaxArtists(plan) {
+  return PLAN_MAX_ARTISTS[plan] ?? 1
+}
+
 // Whether the given user (from AuthContext) can access a feature.
 export function canAccess(user, feature) {
   return Boolean(user && user.entitlements && user.entitlements[feature])

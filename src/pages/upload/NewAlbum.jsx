@@ -3,12 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import '../../styles/new-album.css'
 import { useAuth } from '../../context/AuthContext'
 import { getProfile, updateProfile } from '../../lib/profile'
+import { canAccess, FEATURES, planMaxArtists } from '../../lib/billing'
 import { validateCoverArt, validateAudioFile } from '../../lib/r2upload'
 
 import { API_BASE as BASE } from '../../lib/config.js'
-
-const PLAN_MAX_ARTISTS = { free: 1, starter: 1, single_artist: 1, double_artist: 2, label: 5 }
-const planMaxArtists = (plan) => PLAN_MAX_ARTISTS[plan] ?? 1
 
 const GENRES = [
   'Hip-Hop / Rap', 'Devotional', 'Pop', 'Indie',
@@ -66,6 +64,7 @@ export default function NewAlbum() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const maxArtists = planMaxArtists(user?.plan)
+  const customAllowed = canAccess(user, FEATURES.CUSTOM_LABEL)
   const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })()
   const [isNewArtist, setIsNewArtist] = useState(false)
   const [artistLinkError, setArtistLinkError] = useState('')
@@ -375,7 +374,7 @@ export default function NewAlbum() {
         <button type="button" className="add-song-btn" onClick={addSong}>+ Add Another Song</button>
 
         {/* Permanent save notice */}
-        {!profileData?.spotify_url && (songs[0]?.mainArtists?.[0]?.spotify || songs[0]?.mainArtists?.[0]?.apple) && (
+        {!customAllowed && !profileData?.spotify_url && (songs[0]?.mainArtists?.[0]?.spotify || songs[0]?.mainArtists?.[0]?.apple) && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, padding: '11px 14px', background: 'rgba(234,179,8,0.07)', border: '0.5px solid rgba(234,179,8,0.25)', borderRadius: 10 }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <p style={{ margin: 0, fontSize: 12, color: 'rgba(234,179,8,0.9)', lineHeight: 1.6 }}>These Spotify and Apple Music profile links will be <strong>permanently saved</strong> to your Tunefry profile.</p>
@@ -440,12 +439,12 @@ function ynClass(base, isYes) {
   }
 }
 
-function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, locked, isNewArtist }) {
+function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, locked, isNewArtist, customAllowed }) {
   const isMain = type === 'main'
   const title = isMain ? `Main Artist #${num}` : `Featured Artist #${num}`
   const lockName    = isMain && !!locked?.artist_name
-  const lockSpotify = isMain && (!!locked?.spotify_url || isNewArtist)
-  const lockApple   = isMain && (!!locked?.apple_music_url || isNewArtist)
+  const lockSpotify = isMain && (isNewArtist || (!customAllowed && !!locked?.spotify_url))
+  const lockApple   = isMain && (isNewArtist || (!customAllowed && !!locked?.apple_music_url))
   return (
     <div className="artist-group">
       <div className="artist-group-header">
@@ -562,7 +561,7 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
         <div>
           {song.mainArtists.map((a, i) => (
             <ArtistGroup key={a.key} song={song} type="main" artist={a} num={i + 1} updateArtist={updateArtist} removeArtist={removeArtist}
-              locked={songIndex === 0 && i === 0 ? profileData : null} isNewArtist={songIndex === 0 && i === 0 ? isNewArtist : false} />
+              locked={songIndex === 0 && i === 0 ? profileData : null} isNewArtist={songIndex === 0 && i === 0 ? isNewArtist : false} customAllowed={customAllowed} />
           ))}
         </div>
         {song.mainArtists.length === 0 && (
