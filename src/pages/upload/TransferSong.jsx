@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { getProfile, updateProfile } from '../../lib/profile'
 import { canAccess, FEATURES, planMaxArtists } from '../../lib/billing'
 import { validateCoverArt, validateAudioFile } from '../../lib/r2upload'
+import UpgradeModal from '../../components/UpgradeModal'
 
 import { API_BASE as BASE } from '../../lib/config.js'
 
@@ -27,6 +28,7 @@ export default function TransferSong() {
   const [isrcCode, setIsrcCode] = useState('')
   const [songTitle, setSongTitle] = useState('')
   const [ytBeat, setYtBeat] = useState('')
+  const [ytBeatLink, setYtBeatLink] = useState('')
   const [explicit, setExplicit] = useState('')
   const [category, setCategory] = useState('')
   const [subCategory, setSubCategory] = useState('')
@@ -44,6 +46,15 @@ export default function TransferSong() {
   const [callertuneTiming, setCallertuneTiming] = useState('')
   const [comments, setComments] = useState('')
 
+  // Label name — editable for Double Artist / Label plans (server-validated entitlement)
+  const [showLabelUpgrade, setShowLabelUpgrade] = useState(false)
+  const [savedLabel, setSavedLabel] = useState(
+    (localStorage.getItem('tunefryCustomLabelName') || '').trim()
+  )
+  const [labelSetupValue, setLabelSetupValue] = useState('')
+  const [labelSelectValue, setLabelSelectValue] = useState('')
+  const labelSetupRef = useRef(null)
+
   // Artists — each row keeps the exact field set produced by the original addArtist()
   const [mainArtists, setMainArtists] = useState([{ name: '', spotify: '', apple_music: '', instagram: '' }])
   const [featuredArtists, setFeaturedArtists] = useState([])
@@ -53,6 +64,23 @@ export default function TransferSong() {
   const [isNewArtist, setIsNewArtist] = useState(false)
   const [artistLinkError, setArtistLinkError] = useState('')
   const [profileData, setProfileData] = useState(null)
+
+  useEffect(() => {
+    if (savedLabel) setLabelSelectValue(savedLabel)
+  }, [savedLabel])
+
+  const saveCustomLabelName = () => {
+    const value = labelSetupValue.trim()
+    if (value.length < 2) {
+      if (labelSetupRef.current) {
+        labelSetupRef.current.focus()
+        labelSetupRef.current.style.borderColor = 'rgba(59,130,246,.7)'
+      }
+      return
+    }
+    localStorage.setItem('tunefryCustomLabelName', value)
+    setSavedLabel(value)
+  }
 
   // Prefill first main artist from profile on mount; store for use when adding more artists
   useEffect(() => {
@@ -180,6 +208,11 @@ export default function TransferSong() {
     setErrors(newErrors)
     if (bad) return
 
+    if (ytBeat === 'Yes' && !ytBeatLink.trim()) {
+      setArtistLinkError('Please provide the YouTube beat/sample link.')
+      return
+    }
+
     // Validate Spotify/Apple links (required unless new artist)
     if (!isNewArtist && mainArtists[0]) {
       if (!mainArtists[0].spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return }
@@ -216,8 +249,9 @@ export default function TransferSong() {
     fd.append('upc_code', upcCode.trim())
     fd.append('isrc_code', isrcCode.trim())
     fd.append('song_title', songTitle.trim())
-    fd.append('yt_beat', ytBeat)
-    fd.append('explicit', explicit)
+    fd.append('yt_beat', ytBeat.toLowerCase())
+    if (ytBeat === 'Yes' && ytBeatLink.trim()) fd.append('yt_beat_link', ytBeatLink.trim())
+    fd.append('explicit', explicit.toLowerCase())
     fd.append('genre', category)
     fd.append('sub_category', subCategory)
     fd.append('language', language)
@@ -227,10 +261,15 @@ export default function TransferSong() {
     fd.append('lyricist_name', lyricist.trim())
     fd.append('original_release_date', originalDate)
     fd.append('go_live_date', goLiveDate)
-    fd.append('yt_content_id', ytContentId)
+    fd.append('yt_content_id', ytContentId.toLowerCase())
     fd.append('callertune_name', callertuneName.trim())
     fd.append('callertune_time', callertuneTiming.trim())
     fd.append('comments', comments.trim())
+    let labelValue = ''
+    if (!customAllowed) labelValue = 'Tunefry'
+    else if (savedLabel) labelValue = labelSelectValue.trim()
+    else labelValue = labelSetupValue.trim()
+    if (labelValue) fd.append('label_name', labelValue)
     fd.append('main_artists', JSON.stringify(mainArtistsPayload))
     fd.append('featured_artists', JSON.stringify(featuredArtistsPayload))
     fd.append('cover_art', coverArtFile)
@@ -333,6 +372,19 @@ export default function TransferSong() {
               <option>Yes</option>
               <option>No</option>
             </select>
+            {ytBeat === 'Yes' && (
+              <div style={{ marginTop: 12 }}>
+                <label className="form-label">YouTube Beat / Sample Link <span className="req">*</span></label>
+                <input
+                  type="url"
+                  className="form-input"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={ytBeatLink}
+                  onChange={(e) => { setYtBeatLink(e.target.value); setArtistLinkError('') }}
+                  style={{ marginTop: 6 }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -590,6 +642,41 @@ export default function TransferSong() {
               <option>Yes</option>
               <option>No</option>
             </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Label Name */}
+      <div className="glass-card transfer-section animate-in animate-in-delay-4">
+        <div className="section-eyebrow">Label</div>
+        <div className="section-heading">Label Name</div>
+        <div className="form-grid">
+          <div className="form-group col-span-2">
+            <label className="form-label">Label Name <span className="req">*</span></label>
+            <div id="labelNameWrapTransferSong">
+              {!customAllowed ? (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input type="text" className="form-input" value="Tunefry" readOnly style={{ flex: 1 }} />
+                  <button type="button" onClick={() => setShowLabelUpgrade(true)} style={{ padding: '10px 12px', borderRadius: '10px', border: '0.5px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }} title="Custom label names require an upgrade">🔒</button>
+                </div>
+              ) : !savedLabel ? (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input ref={labelSetupRef} type="text" className="form-input" placeholder="Enter your label name (one-time setup)" value={labelSetupValue} onChange={(e) => setLabelSetupValue(e.target.value)} />
+                  <button type="button" onClick={saveCustomLabelName} style={{ padding: '10px 14px', borderRadius: '10px', border: '0.5px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.06)', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Save</button>
+                </div>
+              ) : (
+                <select className="form-input" value={labelSelectValue} onChange={(e) => setLabelSelectValue(e.target.value)}>
+                  <option value="Tunefry">Tunefry</option>
+                  <option value={savedLabel}>{savedLabel}</option>
+                </select>
+              )}
+            </div>
+            <UpgradeModal
+              open={showLabelUpgrade}
+              onClose={() => setShowLabelUpgrade(false)}
+              title="Custom label name"
+              message="Custom label names are available on the Double Artist and Label plans. Upgrade to release under your own label."
+            />
           </div>
         </div>
       </div>
