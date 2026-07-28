@@ -120,8 +120,10 @@ function SecretGate({ onUnlock }) {
 function AdminSidebar({ active, onNav, onLock }) {
   const navItems = [
     { id: 'users', label: 'All Users', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> },
-    { id: 'songs', label: 'Songs', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> },
-    { id: 'albums', label: 'Albums', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg> },
+    { id: 'new-songs', label: 'New Songs', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> },
+    { id: 'transfer-songs', label: 'Transfer Songs', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg> },
+    { id: 'new-albums', label: 'New Albums', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg> },
+    { id: 'transfer-albums', label: 'Transfer Albums', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg> },
     { id: 'profile-mismatch', label: 'Profile Mismatch', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> },
     { id: 'claim-removal', label: 'Claim Removal', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
     { id: 'insta-link', label: 'Insta Link', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg> },
@@ -1271,8 +1273,10 @@ function MasterHomeView({ secret, onSessionExpired }) {
 
 // ── Root ────────────────────────────────────────────────────────────────────
 const SUBMISSION_VIEWS = [
-  { id: 'songs',           title: 'Songs' },
-  { id: 'albums',          title: 'Albums' },
+  { id: 'new-songs',       title: 'New Songs' },
+  { id: 'transfer-songs',  title: 'Transfer Songs' },
+  { id: 'new-albums',      title: 'New Albums' },
+  { id: 'transfer-albums', title: 'Transfer Albums' },
   { id: 'profile-mismatch',title: 'Profile Mismatch' },
   { id: 'claim-removal',   title: 'Claim Removal' },
   { id: 'insta-link',      title: 'Insta Link' },
