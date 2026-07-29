@@ -2,15 +2,34 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import NotificationsDropdown from '../ui/NotificationsDropdown'
 import CreateReleaseDropdown from '../ui/CreateReleaseDropdown'
+import { useAuth } from '../../context/AuthContext'
+import { API_BASE } from '../../lib/config'
 
 export default function Topbar({ onMenuToggle }) {
+  const { user } = useAuth()
   const [notifOpen, setNotifOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [notifPos, setNotifPos] = useState({ top: 0, right: 0 })
+  const [hasUnread, setHasUnread] = useState(false)
   const notifBtnRef = useRef(null)
   const notifRef = useRef(null)
   const createRef = useRef(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!user?.id) return
+    const lastBellTs = localStorage.getItem(`tf_bell_ts_${user.id}`) || '0'
+    Promise.all([
+      fetch(`${API_BASE}/submissions/my`, { credentials: 'include' }).then((r) => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/notifications/announcements`, { credentials: 'include' }).then((r) => r.ok ? r.json() : []),
+    ]).then(([subs, announcements]) => {
+      const hasNewSub = (Array.isArray(subs) ? subs : [])
+        .some((s) => (s.status === 'approved' || s.status === 'declined') && s.reviewed_at && s.reviewed_at > lastBellTs)
+      const hasNewAnnounce = (Array.isArray(announcements) ? announcements : [])
+        .some((n) => n.created_at > lastBellTs)
+      setHasUnread(hasNewSub || hasNewAnnounce)
+    }).catch(() => {})
+  }, [user?.id])
 
   const openNotif = () => {
     if (notifBtnRef.current) {
@@ -20,7 +39,10 @@ export default function Topbar({ onMenuToggle }) {
         right: Math.max(12, window.innerWidth - rect.right - 10),
       })
     }
-    setNotifOpen((v) => !v)
+    setNotifOpen((v) => {
+      if (!v) setHasUnread(false)
+      return !v
+    })
     setCreateOpen(false)
   }
 
@@ -60,7 +82,7 @@ export default function Topbar({ onMenuToggle }) {
           aria-label="Notifications"
         >
           <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span className="notif-dot" />
+          {hasUnread && <span className="notif-dot" />}
         </button>
 
         <NotificationsDropdown
@@ -68,6 +90,7 @@ export default function Topbar({ onMenuToggle }) {
           open={notifOpen}
           style={{ top: notifPos.top, right: notifPos.right }}
           onClose={() => setNotifOpen(false)}
+          user={user}
         />
 
         <div className="create-release-wrap" ref={createRef}>

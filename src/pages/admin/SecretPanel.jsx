@@ -140,6 +140,7 @@ function AdminSidebar({ active, onNav, onLock }) {
     { id: 'new-artist', label: 'New Artist Profile Updates', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> },
     { id: 'purchases', label: 'Plan Purchases', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
     { id: 'master-home', label: 'Master Home', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { id: 'announcements', label: 'Announcements', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> },
   ]
 
   return (
@@ -1451,6 +1452,112 @@ function MasterHomeView({ secret, onSessionExpired }) {
   )
 }
 
+// ── Announcements view ──────────────────────────────────────────────────────
+function AnnouncementsView({ secret, onSessionExpired }) {
+  const [announceTitle, setAnnounceTitle] = useState('')
+  const [announceBody, setAnnounceBody] = useState('')
+  const [announceStatus, setAnnounceStatus] = useState(null)
+  const [announcements, setAnnouncements] = useState([])
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE}/notifications/announcements`, { credentials: 'include', headers: { 'X-Admin-Secret': secret } })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) return
+      setAnnouncements(await res.json())
+    } catch {}
+  }, [secret, onSessionExpired])
+
+  useEffect(() => { fetchAnnouncements() }, [fetchAnnouncements])
+
+  const handleSendAnnouncement = async () => {
+    if (!announceTitle.trim()) return
+    setAnnounceStatus('sending')
+    try {
+      const res = await fetch(`${BASE}/admin/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': secret },
+        body: JSON.stringify({ title: announceTitle.trim(), body: announceBody.trim() }),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) throw new Error()
+      setAnnounceTitle('')
+      setAnnounceBody('')
+      setAnnounceStatus('ok')
+      fetchAnnouncements()
+      setTimeout(() => setAnnounceStatus(null), 3000)
+    } catch {
+      setAnnounceStatus('error')
+    }
+  }
+
+  const inp = {
+    background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7,
+    padding: '.5rem .75rem', color: '#f0f0f0', fontSize: '.85rem',
+    outline: 'none', width: '100%', boxSizing: 'border-box',
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '1.5rem 1.75rem 1rem', borderBottom: '1px solid #1a1a1a' }}>
+        <h2 style={{ color: '#f0f0f0', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Announcements</h2>
+        <p style={{ color: '#555', margin: '.2rem 0 0', fontSize: '.82rem' }}>Broadcast a message to all users</p>
+      </div>
+
+      <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem 1.75rem' }}>
+        {/* Compose */}
+        <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 11, padding: '1.25rem', marginBottom: '1.75rem', maxWidth: 640 }}>
+          <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '1rem' }}>Send Announcement</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input
+              placeholder="Title"
+              value={announceTitle}
+              onChange={(e) => setAnnounceTitle(e.target.value)}
+              style={inp}
+            />
+            <textarea
+              placeholder="Message (optional)"
+              value={announceBody}
+              onChange={(e) => setAnnounceBody(e.target.value)}
+              rows={3}
+              style={{ ...inp, resize: 'vertical' }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                onClick={handleSendAnnouncement}
+                disabled={announceStatus === 'sending' || !announceTitle.trim()}
+                style={{ padding: '.6rem 1.4rem', borderRadius: 8, border: 'none', background: announceStatus === 'sending' || !announceTitle.trim() ? '#1a1a1a' : 'linear-gradient(135deg,#ff6b2b,#ff4500)', color: announceStatus === 'sending' || !announceTitle.trim() ? '#444' : '#fff', fontWeight: 600, fontSize: '.88rem', cursor: announceStatus === 'sending' || !announceTitle.trim() ? 'default' : 'pointer' }}
+              >
+                {announceStatus === 'sending' ? 'Sending…' : 'Send to All Users'}
+              </button>
+              {announceStatus === 'ok' && <span style={{ color: '#4ade80', fontSize: '.84rem' }}>Announcement sent!</span>}
+              {announceStatus === 'error' && <span style={{ color: '#f87171', fontSize: '.84rem' }}>Failed to send.</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Recent */}
+        <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '1rem' }}>Recent Announcements</div>
+        {announcements.length === 0
+          ? <div style={{ textAlign: 'center', color: '#555', paddingTop: '2rem', fontSize: '.88rem' }}>No announcements yet.</div>
+          : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 640 }}>
+              {announcements.map((a) => (
+                <div key={a.id} style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: '1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                    <strong style={{ color: '#f0f0f0', fontSize: '.9rem', fontWeight: 600 }}>{a.title}</strong>
+                    <span style={{ color: '#555', fontSize: '.75rem', flexShrink: 0 }}>{new Date(a.created_at).toLocaleString()}</span>
+                  </div>
+                  {a.body && <p style={{ color: '#9ca3af', fontSize: '.84rem', margin: '.5rem 0 0', lineHeight: 1.5 }}>{a.body}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+      </div>
+    </div>
+  )
+}
+
 // ── Root ────────────────────────────────────────────────────────────────────
 const SUBMISSION_VIEWS = [
   { id: 'new-songs',       title: 'New Songs' },
@@ -1485,6 +1592,7 @@ export default function SecretPanel() {
         {activeNav === 'new-artist' && <NewArtistView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'purchases' && <PurchasesView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'master-home' && <MasterHomeView secret={secret} onSessionExpired={handleLock} />}
+        {activeNav === 'announcements' && <AnnouncementsView secret={secret} onSessionExpired={handleLock} />}
         {subView && (
           <SubmissionsView key={subView.id} secret={secret} category={subView.id} title={subView.title} onSessionExpired={handleLock} />
         )}

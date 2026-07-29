@@ -1,6 +1,68 @@
-import { forwardRef } from 'react'
+import { forwardRef, useState, useEffect } from 'react'
+import { API_BASE } from '../../lib/config'
 
-const NotificationsDropdown = forwardRef(function NotificationsDropdown({ open, style, onClose }, ref) {
+function relativeTime(isoStr) {
+  const diff = Date.now() - new Date(isoStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
+const NotificationsDropdown = forwardRef(function NotificationsDropdown({ open, style, onClose, user }, ref) {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open || !user?.id) return
+
+    setLoading(true)
+    const storageKey = `tf_bell_ts_${user.id}`
+    const lastBellTs = localStorage.getItem(storageKey) || '0'
+
+    Promise.all([
+      fetch(`${API_BASE}/submissions/my`, { credentials: 'include' }).then((r) => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/notifications/announcements`, { credentials: 'include' }).then((r) => r.ok ? r.json() : []),
+    ]).then(([subs, announcements]) => {
+      const subItems = (Array.isArray(subs) ? subs : [])
+        .filter((s) => (s.status === 'approved' || s.status === 'declined') && s.reviewed_at)
+        .map((s) => ({
+          id: `sub-${s.id}`,
+          type: s.status,
+          title: s.data?.song_title || s.data?.album_name || s.submission_type,
+          ts: s.reviewed_at,
+          unread: s.reviewed_at > lastBellTs,
+        }))
+
+      const announceItems = (Array.isArray(announcements) ? announcements : []).map((n) => ({
+        id: `ann-${n.id}`,
+        type: 'announcement',
+        title: n.title,
+        body: n.body,
+        ts: n.created_at,
+        unread: n.created_at > lastBellTs,
+      }))
+
+      const merged = [...subItems, ...announceItems]
+        .sort((a, b) => (b.ts > a.ts ? 1 : -1))
+        .slice(0, 20)
+
+      setItems(merged)
+      localStorage.setItem(storageKey, new Date().toISOString())
+    }).finally(() => setLoading(false))
+  }, [open, user?.id])
+
+  const markAllRead = () => {
+    if (!user?.id) return
+    const now = new Date().toISOString()
+    localStorage.setItem(`tf_bell_ts_${user.id}`, now)
+    setItems((prev) => prev.map((i) => ({ ...i, unread: false })))
+  }
+
+  const hasUnread = items.some((i) => i.unread)
+
   return (
     <div
       ref={ref}
@@ -9,16 +71,32 @@ const NotificationsDropdown = forwardRef(function NotificationsDropdown({ open, 
     >
       <div className="notif-head">
         <span className="notif-title">Notifications</span>
-        <button className="notif-clear">Mark all read</button>
+        {hasUnread && (
+          <button className="notif-clear" onClick={markAllRead}>Mark all read</button>
+        )}
       </div>
       <div className="notif-list">
-        <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: 10, display: 'block', margin: '0 auto 10px' }}>
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-          No notifications yet
-        </div>
+        {loading ? (
+          <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            Loading…
+          </div>
+        ) : items.length === 0 ? (
+          <p className="notif-empty">No notifications yet</p>
+        ) : (
+          items.map((item) => (
+            <div key={item.id} className={`notif-item${item.unread ? '' : ' read'}`}>
+              <span className="notif-dot-sm" />
+              <div>
+                <div className="notif-text">
+                  {item.type === 'approved' && <span style={{ color: '#4ade80', marginRight: 4 }}>✓ Approved</span>}
+                  {item.type === 'declined' && <span style={{ color: '#f87171', marginRight: 4 }}>✗ Declined</span>}
+                  {item.type === 'announcement' ? `📢 ${item.title}` : item.title}
+                </div>
+                <div className="notif-time">{relativeTime(item.ts)}</div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   )
