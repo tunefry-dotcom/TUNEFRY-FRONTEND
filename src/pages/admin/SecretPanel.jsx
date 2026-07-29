@@ -462,7 +462,8 @@ function DetailModal({ sub, secret, onClose, onReviewed, onDeleted }) {
 
   // Fields to skip in the generic display
   const SKIP = new Set(['submission_type'])
-  const dataEntries = Object.entries(data).filter(([k]) => !SKIP.has(k))
+  // audio_N_key top-level entries are duplicates of songs[N].audio_key; Files section handles downloads
+  const dataEntries = Object.entries(data).filter(([k]) => !SKIP.has(k) && !/^audio_\d+_key$/.test(k))
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={onClose}>
@@ -495,6 +496,59 @@ function DetailModal({ sub, secret, onClose, onReviewed, onDeleted }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
             {dataEntries.map(([k, v]) => {
               if (v === null || v === undefined || v === '') return null
+
+              // Custom rich renderer for album tracks
+              if (k === 'songs' && Array.isArray(v)) {
+                return (
+                  <div key="songs" style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
+                      Songs ({v.length})
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {v.map((track, i) => {
+                        const artists = (track.main_artists || []).map((a) => a.name).filter(Boolean).join(', ')
+                        const featured = (track.featured_artists || []).map((a) => a.name).filter(Boolean).join(', ')
+                        const rows = [
+                          { label: 'Track', value: track.index ?? i + 1 },
+                          { label: 'Title', value: track.title || track.songName },
+                          { label: 'Duration', value: track.duration },
+                          { label: 'Genre', value: [track.genre, track.sub_genre || track.subGenre].filter(Boolean).join(' / ') },
+                          { label: 'Language', value: track.language },
+                          { label: 'Mood', value: Array.isArray(track.moods) ? track.moods.join(', ') : track.moods },
+                          { label: 'Main Artists', value: artists },
+                          { label: 'Featured Artists', value: featured },
+                          { label: 'Lyricist', value: track.lyricist },
+                          { label: 'Composer', value: track.composer },
+                          { label: 'Producer', value: track.producer || track.musicProducer },
+                          { label: 'Explicit', value: track.explicit },
+                          { label: 'YT Content ID', value: track.yt_content_id ?? track.ytCid },
+                          { label: 'YT Beat', value: track.yt_beat ?? track.ytBeat },
+                          { label: 'ISRC', value: track.isrc || track.isrcNo },
+                          { label: 'Orig. Release', value: track.original_release_date || track.originalReleaseDate },
+                          { label: 'Go Live', value: track.go_live_date || track.goLiveDate },
+                          { label: 'Callertune', value: track.callertune_timing || track.callertuneTiming },
+                        ].filter((r) => r.value)
+                        return (
+                          <div key={i} style={{ background: '#1a1a1a', borderRadius: 8, padding: '10px 14px', border: '1px solid #2a2a2a' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
+                              {rows.map((r) => (
+                                <span key={r.label} style={{ fontSize: '.78rem', color: '#d1d5db' }}>
+                                  <span style={{ color: '#555', fontWeight: 600 }}>{r.label}: </span>
+                                  {String(r.value)}
+                                </span>
+                              ))}
+                            </div>
+                            {track.audio_key && (
+                              <div style={{ marginTop: 6, fontSize: '.72rem', color: '#444' }}>{track.audio_key}</div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }
+
               const display = Array.isArray(v)
                 ? v.map((item, i) => (
                     <div key={i} style={{ background: '#1a1a1a', borderRadius: 6, padding: '6px 10px', marginTop: 4, fontSize: '.78rem', color: '#d1d5db' }}>

@@ -275,28 +275,28 @@ export default function TransferAlbum() {
     setSubmitting(true);
 
     // Collect songs
-    const collected = songs.map((s, idx) => {
-      const song = { index: idx + 1 };
-      song.songName = s.songName;
-      song.duration = s.duration;
-      song.originalReleaseDate = s.originalReleaseDate;
-      song.goLiveDate = s.goLiveDate;
-      song.ytCid = s.ytCid;
-      song.genre = s.genre;
-      song.subGenre = s.subGenre;
-      song.language = s.language;
-      song.moods = s.moods;
-      song.musicProducer = s.musicProducer;
-      song.composer = s.composer;
-      song.lyricist = s.lyricist;
-      song.callertuneTiming = s.callertuneTiming;
-      song.callertuneCutName = s.callertuneCutName;
-      song.ytBeat = s.ytBeat;
-      song.explicit = s.explicit;
-      song.isrcNo = s.isrcNo;
-      song.main_artists = s.mainArtists.map((a) => ({ name: a.name }));
-      return song;
-    });
+    const collected = songs.map((s, idx) => ({
+      index: idx + 1,
+      title: s.songName,
+      duration: s.duration,
+      original_release_date: s.originalReleaseDate,
+      go_live_date: s.goLiveDate,
+      genre: s.genre,
+      sub_genre: s.subGenre,
+      language: s.language,
+      moods: s.moods,
+      producer: s.musicProducer,
+      composer: s.composer,
+      lyricist: s.lyricist,
+      callertune_timing: s.callertuneTiming,
+      callertune_cut_name: s.callertuneCutName,
+      yt_content_id: s.ytCid,
+      yt_beat: s.ytBeat,
+      explicit: s.explicit,
+      isrc: s.isrcNo,
+      main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
+      featured_artists: s.featuredArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple, instagram: a.instagram })),
+    }));
 
     const fd = new FormData();
     fd.append('upc_code', upcCode.trim());

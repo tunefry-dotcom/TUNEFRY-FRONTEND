@@ -229,7 +229,24 @@ export default function NewAlbum() {
 
     const collectedSongs = songs.map((s, idx) => ({
       index: idx + 1,
+      title: s.name,
+      duration: s.duration,
+      original_release_date: s.originalReleaseDate,
+      go_live_date: s.goLiveDate,
+      genre: s.genre,
+      sub_genre: s.subGenre,
+      language: s.language,
+      moods: s.moods,
+      producer: s.producer,
+      composer: s.composer,
+      lyricist: s.lyricist,
+      callertune_timing: s.callertuneTiming,
+      callertune_cut_name: s.callertuneCutName,
+      yt_content_id: s.ytCid ? 'yes' : 'no',
+      yt_beat: s.ytBeat ? 'yes' : 'no',
+      explicit: s.explicit ? 'yes' : 'no',
       main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
+      featured_artists: s.featuredArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple, instagram: a.instagram })),
     }))
 
     const fd = new FormData()
@@ -368,6 +385,8 @@ export default function NewAlbum() {
               maxArtists={maxArtists}
               profileData={profileData}
               songIndex={idx}
+              isNewArtist={isNewArtist}
+              customAllowed={customAllowed}
             />
           ))}
         </div>
@@ -461,7 +480,7 @@ function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, lock
   )
 }
 
-function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, toggleMood, addArtist, removeArtist, updateArtist, handleSongAudio, maxArtists, profileData, songIndex }) {
+function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, toggleMood, addArtist, removeArtist, updateArtist, handleSongAudio, maxArtists, profileData, songIndex, isNewArtist, customAllowed }) {
   const audioRef = useRef(null)
   const ytCid = ynClass('yn-btn', song.ytCid)
   const ytBeat = ynClass('yn-btn', song.ytBeat)
