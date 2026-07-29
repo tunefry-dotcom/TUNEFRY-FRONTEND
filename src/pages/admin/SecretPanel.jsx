@@ -17,6 +17,16 @@ const PLAN_NAMES = {
   'single-artist': 'Single Artist', 'double-artist': 'Double Artist', 'label': 'Label Plan',
 }
 
+const SUBMISSION_PLAN_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'free', label: 'Free' },
+  { key: 'single-song', label: 'Single Song' },
+  { key: 'starter', label: 'Starter' },
+  { key: 'single-artist', label: 'Single Artist' },
+  { key: 'double-artist', label: 'Double Artist' },
+  { key: 'label', label: 'Label' },
+]
+
 const TYPE_LABELS = {
   new_song:        { label: 'New Song',      color: '#6366f1' },
   transfer_song:   { label: 'Transfer',      color: '#8b5cf6' },
@@ -411,8 +421,24 @@ function DownloadButton({ label, r2key, secret }) {
   )
 }
 
-function DetailModal({ sub, secret, onClose, onReviewed }) {
+function DetailModal({ sub, secret, onClose, onReviewed, onDeleted }) {
   const [loading, setLoading] = useState(false)
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this submission permanently? This also removes its uploaded files.')) return
+    setLoading(true)
+    try {
+      const res = await fetch(`${BASE}/admin/submissions`, {
+        method: 'DELETE',
+        headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [sub.id] }),
+      })
+      if (!res.ok) { alert(`Delete failed: ${res.status}`); return }
+      onDeleted(sub.id)
+      onClose()
+    } catch (e) { alert('Network error.') }
+    finally { setLoading(false) }
+  }
 
   const handleAction = async (newStatus) => {
     setLoading(true)
@@ -454,7 +480,14 @@ function DetailModal({ sub, secret, onClose, onReviewed }) {
             <div style={{ color: '#f0f0f0', fontWeight: 600, fontSize: '1rem' }}>{subTitle(sub)}</div>
             <div style={{ color: '#6b7280', fontSize: '.8rem', marginTop: 2 }}>{sub.user_email} · {fmtDate(sub.created_at)}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1 }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={handleDelete} disabled={loading} title="Delete submission"
+              style={{ background: '#2d0a0a', border: '1px solid #7f1d1d', borderRadius: 7, padding: '.4rem .7rem', color: loading ? '#555' : '#f87171', cursor: loading ? 'default' : 'pointer', fontSize: '.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Delete
+            </button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1 }}>✕</button>
+          </div>
         </div>
 
         {/* Body */}
@@ -539,11 +572,18 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selected, setSelected] = useState(null)
+  const [search, setSearch] = useState('')
+  const [planFilter, setPlanFilter] = useState('all')
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [deleting, setDeleting] = useState(false)
 
   const fetchPage = useCallback(async (p) => {
     setLoading(true); setError('')
     try {
-      const res = await fetch(`${BASE}/admin/submissions/${category}?page=${p}&per_page=10`, {
+      const params = new URLSearchParams({ page: p, per_page: 10 })
+      if (search.trim()) params.set('q', search.trim())
+      if (planFilter !== 'all') params.set('plan', planFilter)
+      const res = await fetch(`${BASE}/admin/submissions/${category}?${params}`, {
         headers: { 'X-Admin-Secret': secret },
       })
       if (res.status === 403) { onSessionExpired(); return }
@@ -553,11 +593,16 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
       setTotal(data.total)
       setTotalPages(data.total_pages)
       setPage(data.page)
+      setSelectedIds(new Set())
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
-  }, [secret, category, onSessionExpired])
+  }, [secret, category, onSessionExpired, search, planFilter])
 
-  useEffect(() => { fetchPage(1) }, [fetchPage])
+  // Debounced (re)load: fires on mount and whenever search / planFilter / category change.
+  useEffect(() => {
+    const t = setTimeout(() => fetchPage(1), 300)
+    return () => clearTimeout(t)
+  }, [fetchPage])
 
   const handleReviewed = (id, newStatus) => {
     setSubmissions((prev) => {
@@ -565,6 +610,47 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
       // Sort: pending first, reviewed last
       return [...updated.filter((s) => s.status === 'pending'), ...updated.filter((s) => s.status !== 'pending')]
     })
+  }
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const allOnPageSelected = submissions.length > 0 && submissions.every((s) => selectedIds.has(s.id))
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (submissions.every((s) => next.has(s.id))) submissions.forEach((s) => next.delete(s.id))
+      else submissions.forEach((s) => next.add(s.id))
+      return next
+    })
+  }
+
+  const deleteIds = async (ids) => {
+    if (ids.length === 0) return
+    if (!window.confirm(`Delete ${ids.length} submission${ids.length > 1 ? 's' : ''} permanently? This also removes uploaded files.`)) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`${BASE}/admin/submissions`, {
+        method: 'DELETE',
+        headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) { alert(`Delete failed: ${res.status}`); return }
+      await fetchPage(page)
+    } catch (e) { alert('Network error.') }
+    finally { setDeleting(false) }
+  }
+
+  const handleDeleted = (id) => {
+    setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n })
+    fetchPage(page)
   }
 
   const pending = submissions.filter((s) => s.status === 'pending').length
@@ -586,6 +672,43 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
         </button>
       </div>
 
+      {/* Search + plan filter toolbar */}
+      <div style={{ padding: '.9rem 1.75rem', borderBottom: '1px solid #1a1a1a', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search song / album title or email…" value={search} onChange={(e) => setSearch(e.target.value)}
+            style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.55rem .8rem .55rem 2rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', boxSizing: 'border-box' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {SUBMISSION_PLAN_FILTERS.map((fo) => (
+            <button key={fo.key} onClick={() => setPlanFilter(fo.key)}
+              style={{ padding: '.38rem .7rem', borderRadius: 6, border: `1px solid ${planFilter === fo.key ? '#ff6b2b' : '#2a2a2a'}`, background: planFilter === fo.key ? 'rgba(255,107,43,.12)' : '#1a1a1a', color: planFilter === fo.key ? '#ff6b2b' : '#9ca3af', fontSize: '.75rem', fontWeight: planFilter === fo.key ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all .1s' }}>
+              {fo.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Bulk actions bar */}
+      {submissions.length > 0 && (
+        <div style={{ padding: '.6rem 1.75rem', borderBottom: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#9ca3af', fontSize: '.8rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll} style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#ff6b2b' }} />
+            Select all on page
+          </label>
+          {selectedIds.size > 0 && (
+            <>
+              <span style={{ color: '#ff6b2b', fontSize: '.8rem', fontWeight: 600 }}>{selectedIds.size} selected</span>
+              <button onClick={() => deleteIds([...selectedIds])} disabled={deleting}
+                style={{ marginLeft: 'auto', padding: '.4rem .8rem', borderRadius: 7, border: '1px solid #7f1d1d', background: deleting ? '#1a1a1a' : '#2d0a0a', color: deleting ? '#555' : '#f87171', fontSize: '.8rem', fontWeight: 600, cursor: deleting ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                {deleting ? 'Deleting…' : `Delete ${selectedIds.size}`}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Body */}
       <div style={{ flex: 1, overflow: 'auto', padding: '1.25rem 1.75rem' }}>
         {error && <div style={{ background: '#2d0a0a', border: '1px solid #7f1d1d', borderRadius: 9, padding: '.875rem 1rem', color: '#f87171', fontSize: '.85rem', marginBottom: '1rem' }}>Error: {error}</div>}
@@ -603,6 +726,9 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
                     style={{ background: isReviewed ? '#0d0d0d' : '#111', border: `1px solid ${isReviewed ? '#161616' : '#1f1f1f'}`, borderRadius: 10, padding: '1rem 1.1rem', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', opacity: isReviewed ? 0.55 : 1, transition: 'all .15s', filter: isReviewed ? 'grayscale(0.4)' : 'none' }}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = isReviewed ? '#222' : '#2a2a2a'; e.currentTarget.style.background = isReviewed ? '#111' : '#161616' }}
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = isReviewed ? '#161616' : '#1f1f1f'; e.currentTarget.style.background = isReviewed ? '#0d0d0d' : '#111' }}>
+                    {/* Select checkbox */}
+                    <input type="checkbox" checked={selectedIds.has(sub.id)} onClick={(e) => e.stopPropagation()} onChange={() => toggleSelect(sub.id)}
+                      style={{ width: 16, height: 16, flexShrink: 0, cursor: 'pointer', accentColor: '#ff6b2b' }} />
                     {/* Avatar */}
                     <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: avatarColor(sub.user_email), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '.82rem' }}>
                       {initials(sub.user_email)}
@@ -644,7 +770,7 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
       )}
 
       {selected && (
-        <DetailModal sub={selected} secret={secret} onClose={() => setSelected(null)} onReviewed={handleReviewed} />
+        <DetailModal sub={selected} secret={secret} onClose={() => setSelected(null)} onReviewed={handleReviewed} onDeleted={handleDeleted} />
       )}
     </div>
   )
