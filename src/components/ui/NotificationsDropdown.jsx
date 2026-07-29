@@ -14,6 +14,12 @@ function relativeTime(isoStr) {
 const NotificationsDropdown = forwardRef(function NotificationsDropdown({ open, style, onClose, user }, ref) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
+  const [expandedId, setExpandedId] = useState(null)
+
+  // Reset expanded state whenever the dropdown closes
+  useEffect(() => {
+    if (!open) setExpandedId(null)
+  }, [open])
 
   useEffect(() => {
     if (!open || !user?.id) return
@@ -32,6 +38,9 @@ const NotificationsDropdown = forwardRef(function NotificationsDropdown({ open, 
           id: `sub-${s.id}`,
           type: s.status,
           title: s.data?.song_title || s.data?.album_name || s.submission_type,
+          body: s.status === 'approved'
+            ? 'Your release has been approved and is on its way to stores.'
+            : 'Your submission was declined. Check your email for details.',
           ts: s.reviewed_at,
           unread: s.reviewed_at > lastBellTs,
         }))
@@ -83,19 +92,65 @@ const NotificationsDropdown = forwardRef(function NotificationsDropdown({ open, 
         ) : items.length === 0 ? (
           <p className="notif-empty">No notifications yet</p>
         ) : (
-          items.map((item) => (
-            <div key={item.id} className={`notif-item${item.unread ? '' : ' read'}`}>
-              <span className="notif-dot-sm" />
-              <div>
-                <div className="notif-text">
-                  {item.type === 'approved' && <span style={{ color: '#4ade80', marginRight: 4 }}>✓ Approved</span>}
-                  {item.type === 'declined' && <span style={{ color: '#f87171', marginRight: 4 }}>✗ Declined</span>}
-                  {item.type === 'announcement' ? `📢 ${item.title}` : item.title}
+          items.map((item) => {
+            const isExpanded = expandedId === item.id
+            return (
+              <div
+                key={item.id}
+                className={`notif-item${item.unread ? '' : ' read'}`}
+                onClick={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+              >
+                <span className="notif-dot-sm" />
+                <div style={{ minWidth: 0 }}>
+                  <div className="notif-text">
+                    {item.type === 'approved' && <span style={{ color: '#4ade80', marginRight: 4 }}>✓ Approved —</span>}
+                    {item.type === 'declined' && <span style={{ color: '#f87171', marginRight: 4 }}>✗ Declined —</span>}
+                    {item.type === 'announcement' ? `📢 ${item.title}` : item.title}
+                  </div>
+
+                  {item.body && (
+                    <div style={isExpanded ? {
+                      fontSize: 11.5,
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.55,
+                      marginTop: 3,
+                    } : {
+                      fontSize: 11.5,
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.55,
+                      marginTop: 3,
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: 2,
+                    }}>
+                      {item.body}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <span className="notif-time">{relativeTime(item.ts)}</span>
+                    {item.body && (
+                      <svg
+                        width="10" height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="var(--text-muted)"
+                        strokeWidth="2.5"
+                        style={{
+                          transform: isExpanded ? 'rotate(180deg)' : 'none',
+                          transition: 'transform 0.2s ease',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    )}
+                  </div>
                 </div>
-                <div className="notif-time">{relativeTime(item.ts)}</div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
     </div>
