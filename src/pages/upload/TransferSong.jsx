@@ -95,6 +95,7 @@ export default function TransferSong() {
 
   // File selections
   const [coverArtName, setCoverArtName] = useState('')
+  const [coverPreview, setCoverPreview] = useState('')
   const [audioFileName, setAudioFileName] = useState('')
   const coverInputRef = useRef(null)
   const audioInputRef = useRef(null)
@@ -141,12 +142,16 @@ export default function TransferSong() {
   const selectCoverArt = async (file) => {
     if (!file) return
     setCoverArtName(file.name)
+    const reader = new FileReader()
+    reader.onload = (ev) => setCoverPreview(ev.target.result)
+    reader.readAsDataURL(file)
     try {
       await validateCoverArt(file)
       setCoverArtFile(file)
       setFileErrors((p) => ({ ...p, cover: '' }))
     } catch (err) {
       setCoverArtFile(null)
+      setCoverPreview('')
       setFileErrors((p) => ({ ...p, cover: String(err) }))
       if (coverInputRef.current) coverInputRef.current.value = ''
     }
@@ -688,12 +693,17 @@ export default function TransferSong() {
         <div className="form-grid">
           <div className="form-group">
             <label className="form-label">Cover Art <span className="req">*</span></label>
-            <div className="upload-zone" id="coverArtZone" style={fileErrors.cover ? { borderColor: '#f87171' } : coverArtFile ? { borderColor: 'rgba(242,101,34,0.5)' } : undefined}>
+            <div className="upload-zone" id="coverArtZone" style={{ overflow: 'hidden', minHeight: 200, ...(fileErrors.cover ? { borderColor: '#f87171' } : coverArtFile ? { borderColor: 'rgba(242,101,34,0.5)' } : {}) }}>
               <input ref={coverInputRef} type="file" name="cover_art" accept="image/jpeg,image/png" onChange={(e) => handleFileSelect(e.target, setCoverArtName)} />
-              <div className="upload-zone-icon">📁</div>
-              <div className="upload-zone-text">Drag &amp; drop your cover art or click to browse</div>
-              <div className="upload-zone-sub">JPEG or PNG — must be exactly 3000×3000 px</div>
-              <div className="upload-zone-name" style={coverArtName ? { display: 'block' } : undefined}>{coverArtFile ? '✓ ' + coverArtName : coverArtName}</div>
+              {coverPreview && <img src={coverPreview} alt="Cover preview" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />}
+              {!coverPreview && (
+                <>
+                  <div className="upload-zone-icon">📁</div>
+                  <div className="upload-zone-text">Drag &amp; drop your cover art or click to browse</div>
+                  <div className="upload-zone-sub">JPEG or PNG — must be exactly 3000×3000 px</div>
+                  <div className="upload-zone-name" style={coverArtName ? { display: 'block' } : undefined}>{coverArtFile ? '✓ ' + coverArtName : coverArtName}</div>
+                </>
+              )}
             </div>
             {fileErrors.cover && <p style={{ marginTop: 6, fontSize: '12px', color: '#f87171', fontWeight: 500 }}>{fileErrors.cover}</p>}
             {coverArtFile && !fileErrors.cover && <p style={{ marginTop: 6, fontSize: '12px', color: '#4ade80' }}>✓ 3000×3000 px verified</p>}

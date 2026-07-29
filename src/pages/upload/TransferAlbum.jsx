@@ -26,6 +26,14 @@ const MOOD_OPTIONS = [
   'Dance', 'Nostalgic', 'Inspirational', 'Calm',
 ];
 
+function ynClass(base, isYes) {
+  // base is 'yn-btn' or 'explicit-btn'
+  return {
+    no: isYes ? base : `${base} active-no`,
+    yes: isYes ? `${base} active-yes` : base,
+  };
+}
+
 let songSeq = 0;
 let artistSeq = 0;
 
@@ -40,24 +48,22 @@ function makeSong() {
     id: 'song-' + songSeq,
     open: true,
     songName: '',
-    duration: '',
-    originalReleaseDate: '',
-    goLiveDate: '',
     audioFileName: '',
     audioFile: null,   // File object for R2 upload
     audioError: '',
-    ytCid: 'no',
+    ytCid: false,
     genre: '',
     subGenre: '',
     language: '',
-    moods: [],
+    mood: '',
     musicProducer: '',
     composer: '',
     lyricist: '',
     callertuneTiming: '',
     callertuneCutName: '',
-    ytBeat: 'no',
-    explicit: 'no',
+    ytBeat: false,
+    ytBeatLink: '',
+    explicit: false,
     isrcNo: '',
     mainArtists: [],
     featuredArtists: [],
@@ -77,6 +83,8 @@ export default function TransferAlbum() {
   const [upcCode, setUpcCode] = useState('');
   const [albumIsrc, setAlbumIsrc] = useState('');
   const [albumName, setAlbumName] = useState('');
+  const [originalReleaseDate, setOriginalReleaseDate] = useState('');
+  const [goLiveDate, setGoLiveDate] = useState('');
   const [albumDescription, setAlbumDescription] = useState('');
   const [additionalComments, setAdditionalComments] = useState('');
   const [ownershipCheck, setOwnershipCheck] = useState(false);
@@ -120,16 +128,6 @@ export default function TransferAlbum() {
 
   function removeSong(id) {
     setSongs((prev) => prev.filter((s) => s.id !== id));
-  }
-
-  function toggleMood(songId, mood) {
-    setSongs((prev) =>
-      prev.map((s) => {
-        if (s.id !== songId) return s;
-        const has = s.moods.includes(mood);
-        return { ...s, moods: has ? s.moods.filter((m) => m !== mood) : [...s.moods, mood] };
-      })
-    );
   }
 
   function addArtistToSong(songId, type) {
@@ -250,7 +248,16 @@ export default function TransferAlbum() {
       if (!bad) { nameRef.current && nameRef.current.focus(); bad = true; }
     }
     if (bad) return;
+    if (!originalReleaseDate || !goLiveDate) {
+      setArtistLinkError('Please set the album Original Release Date and Go Live Date.');
+      return;
+    }
     if (!coverFile) { setCoverError('Cover art is required.'); return; }
+    const beatMissingLink = songs.find((s) => s.ytBeat && !s.ytBeatLink.trim());
+    if (beatMissingLink) {
+      setArtistLinkError('Please provide the YouTube beat/sample link for tracks marked as using a YouTube beat.');
+      return;
+    }
     const firstArtist = songs[0]?.mainArtists?.[0];
     if (!isNewArtist && firstArtist) {
       if (!firstArtist.spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return; }
@@ -278,21 +285,19 @@ export default function TransferAlbum() {
     const collected = songs.map((s, idx) => ({
       index: idx + 1,
       title: s.songName,
-      duration: s.duration,
-      original_release_date: s.originalReleaseDate,
-      go_live_date: s.goLiveDate,
       genre: s.genre,
       sub_genre: s.subGenre,
       language: s.language,
-      moods: s.moods,
+      mood: s.mood,
       producer: s.musicProducer,
       composer: s.composer,
       lyricist: s.lyricist,
       callertune_timing: s.callertuneTiming,
       callertune_cut_name: s.callertuneCutName,
-      yt_content_id: s.ytCid,
-      yt_beat: s.ytBeat,
-      explicit: s.explicit,
+      yt_content_id: s.ytCid ? 'yes' : 'no',
+      yt_beat: s.ytBeat ? 'yes' : 'no',
+      ...(s.ytBeat && s.ytBeatLink.trim() ? { yt_beat_link: s.ytBeatLink.trim() } : {}),
+      explicit: s.explicit ? 'yes' : 'no',
       isrc: s.isrcNo,
       main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
       featured_artists: s.featuredArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple, instagram: a.instagram })),
@@ -302,6 +307,8 @@ export default function TransferAlbum() {
     fd.append('upc_code', upcCode.trim());
     fd.append('isrc_code', albumIsrc.trim());
     fd.append('album_name', albumName.trim());
+    fd.append('original_release_date', originalReleaseDate);
+    fd.append('go_live_date', goLiveDate);
     fd.append('songs', JSON.stringify(collected));
     fd.append('album_description', albumDescription.trim());
     fd.append('additional_comments', additionalComments.trim());
@@ -432,6 +439,9 @@ export default function TransferAlbum() {
   function renderSong(song, i) {
     const num = i + 1;
     const removeDisabled = songs.length === 1;
+    const ytCidCls = ynClass('yn-btn', song.ytCid);
+    const ytBeatCls = ynClass('yn-btn', song.ytBeat);
+    const explicitCls = ynClass('explicit-btn', song.explicit);
     return (
       <div className={'song-card' + (song.open ? ' open' : '')} id={song.id} key={song.id}>
         <div className="song-card-hd" onClick={() => toggleSong(song.id)}>
@@ -476,45 +486,6 @@ export default function TransferAlbum() {
               />
             </div>
           </div>
-          <div className="form-grid-3" style={{ marginTop: '16px' }}>
-            <div className="form-group">
-              <label className="form-label">
-                Duration <span className="req">*</span>
-              </label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="mm:ss"
-                maxLength="5"
-                value={song.duration}
-                onChange={(e) => updateSong(song.id, { duration: sanitizeTime(e.target.value) })}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">
-                Original Release Date <span className="req">*</span>
-              </label>
-              <input
-                type="date"
-                className="form-input"
-                style={{ colorScheme: 'dark' }}
-                value={song.originalReleaseDate}
-                onChange={(e) => updateSong(song.id, { originalReleaseDate: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">
-                Go Live Date <span className="req">*</span>
-              </label>
-              <input
-                type="date"
-                className="form-input"
-                style={{ colorScheme: 'dark' }}
-                value={song.goLiveDate}
-                onChange={(e) => updateSong(song.id, { goLiveDate: e.target.value })}
-              />
-            </div>
-          </div>
           <div className="form-group" style={{ marginTop: '16px' }}>
             <label className="form-label">
               Audio File <span className="req">*</span>
@@ -552,15 +523,10 @@ export default function TransferAlbum() {
               <label className="form-label">
                 YouTube Content ID <span className="req">*</span>
               </label>
-              <select
-                className="form-input"
-                id={song.id + '-ytCid'}
-                value={song.ytCid}
-                onChange={(e) => updateSong(song.id, { ytCid: e.target.value })}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
+              <div className="yn-toggle">
+                <button type="button" className={ytCidCls.no} onClick={() => updateSong(song.id, { ytCid: false })}>No</button>
+                <button type="button" className={ytCidCls.yes} onClick={() => updateSong(song.id, { ytCid: true })}>Yes</button>
+              </div>
             </div>
           </div>
           <div className="form-grid-3" style={{ marginTop: '16px' }}>
@@ -611,18 +577,16 @@ export default function TransferAlbum() {
             <label className="form-label">
               Mood <span className="opt-tag">(optional)</span>
             </label>
-            <div className="mood-pills">
+            <select
+              className="form-input"
+              value={song.mood}
+              onChange={(e) => updateSong(song.id, { mood: e.target.value })}
+            >
+              <option value="">Select mood</option>
               {MOOD_OPTIONS.map((mood) => (
-                <button
-                  key={mood}
-                  type="button"
-                  className={'mood-pill' + (song.moods.includes(mood) ? ' active' : '')}
-                  onClick={() => toggleMood(song.id, mood)}
-                >
-                  {mood}
-                </button>
+                <option key={mood}>{mood}</option>
               ))}
-            </div>
+            </select>
           </div>
           <div className="song-sub-label">Credits</div>
           <div className="form-grid">
@@ -693,29 +657,29 @@ export default function TransferAlbum() {
               <label className="form-label">
                 YouTube Music / Beat <span className="req">*</span>
               </label>
-              <select
-                className="form-input"
-                id={song.id + '-ytBeat'}
-                value={song.ytBeat}
-                onChange={(e) => updateSong(song.id, { ytBeat: e.target.value })}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
+              <div className="yn-toggle">
+                <button type="button" className={ytBeatCls.no} onClick={() => updateSong(song.id, { ytBeat: false, ytBeatLink: '' })}>No</button>
+                <button type="button" className={ytBeatCls.yes} onClick={() => updateSong(song.id, { ytBeat: true })}>Yes</button>
+              </div>
+              {song.ytBeat && (
+                <input
+                  type="url"
+                  className="form-input"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={song.ytBeatLink}
+                  onChange={(e) => updateSong(song.id, { ytBeatLink: e.target.value })}
+                  style={{ marginTop: 8 }}
+                />
+              )}
             </div>
             <div className="form-group">
               <label className="form-label">
                 Explicit Content <span className="req">*</span>
               </label>
-              <select
-                className="form-input"
-                id={song.id + '-explicit'}
-                value={song.explicit}
-                onChange={(e) => updateSong(song.id, { explicit: e.target.value })}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
+              <div className="explicit-toggle">
+                <button type="button" className={explicitCls.no} onClick={() => updateSong(song.id, { explicit: false })}>No</button>
+                <button type="button" className={explicitCls.yes} onClick={() => updateSong(song.id, { explicit: true })}>Yes</button>
+              </div>
             </div>
           </div>
           <div className="form-group" style={{ marginTop: '16px' }}>

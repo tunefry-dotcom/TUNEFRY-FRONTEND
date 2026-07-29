@@ -217,6 +217,21 @@
     }
     .mood-pill:hover { border-color: rgba(59,130,246,0.35); color: var(--text-primary); background: rgba(59,130,246,0.06); }
     .mood-pill.active { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.45); color: #3B82F6; }
+    .yn-toggle, .explicit-toggle {
+      display: flex; border-radius: 10px; overflow: hidden;
+      border: 0.5px solid rgba(255,255,255,0.09);
+    }
+    .yn-btn, .explicit-btn {
+      flex: 1; padding: 10px 0; font-size: 12px; font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: 0.05em;
+      text-transform: uppercase; cursor: pointer; border: none;
+      background: rgba(255,255,255,0.04); color: var(--text-muted);
+      transition: all .18s ease;
+    }
+    .yn-btn:first-child, .explicit-btn:first-child { border-right: 0.5px solid rgba(255,255,255,0.09); }
+    .yn-btn:hover, .explicit-btn:hover { background: rgba(255,255,255,0.07); color: var(--text-secondary); }
+    .yn-btn.active-yes, .explicit-btn.active-yes { background: rgba(34,197,94,0.12); color: #22C55E; }
+    .yn-btn.active-no, .explicit-btn.active-no { background: rgba(239,68,68,0.12); color: #EF4444; }
     .drop-zone {
       border: 1.5px dashed rgba(255,255,255,0.12); border-radius: 14px;
       display: flex; flex-direction: column; align-items: center; justify-content: center;

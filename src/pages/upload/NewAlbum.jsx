@@ -31,9 +31,6 @@ function makeSong() {
     key: songSeq,
     open: true,
     name: '',
-    duration: '',
-    originalReleaseDate: '',
-    goLiveDate: '',
     audioName: '',
     audioFile: null,   // File object for R2 upload
     audioError: '',
@@ -41,13 +38,14 @@ function makeSong() {
     genre: '',
     subGenre: '',
     language: '',
-    moods: [],
+    mood: '',
     producer: '',
     composer: '',
     lyricist: '',
     callertuneTiming: '',
     callertuneCutName: '',
     ytBeat: false,
+    ytBeatLink: '',
     explicit: false,
     mainArtists: [],
     featuredArtists: [],
@@ -71,6 +69,8 @@ export default function NewAlbum() {
   const [profileData, setProfileData] = useState(null)
 
   const [albumName, setAlbumName] = useState('')
+  const [originalReleaseDate, setOriginalReleaseDate] = useState('')
+  const [goLiveDate, setGoLiveDate] = useState('')
   const [albumDescription, setAlbumDescription] = useState('')
   const [additionalComments, setAdditionalComments] = useState('')
   const [coverPreview, setCoverPreview] = useState('')
@@ -97,15 +97,6 @@ export default function NewAlbum() {
   const addSong = () => setSongs((prev) => [...prev, makeSong()])
 
   const removeSong = (key) => setSongs((prev) => prev.filter((s) => s.key !== key))
-
-  const toggleMood = (key, mood) =>
-    setSongs((prev) =>
-      prev.map((s) =>
-        s.key === key
-          ? { ...s, moods: s.moods.includes(mood) ? s.moods.filter((m) => m !== mood) : [...s.moods, mood] }
-          : s
-      )
-    )
 
   const addArtist = (key, type) =>
     setSongs((prev) =>
@@ -202,7 +193,16 @@ export default function NewAlbum() {
       setTimeout(() => setAlbumNameStyle({}), 2200)
       return
     }
+    if (!originalReleaseDate || !goLiveDate) {
+      setArtistLinkError('Please set the album Original Release Date and Go Live Date.')
+      return
+    }
     if (!coverFile) { setCoverError('Cover art is required.'); return }
+    const beatMissingLink = songs.find((s) => s.ytBeat && !s.ytBeatLink.trim())
+    if (beatMissingLink) {
+      setArtistLinkError('Please provide the YouTube beat/sample link for tracks marked as using a YouTube beat.')
+      return
+    }
     const firstArtist = songs[0]?.mainArtists?.[0]
     if (!isNewArtist && firstArtist) {
       if (!firstArtist.spotify?.trim()) { setArtistLinkError('Spotify Profile Link is required for the main artist.'); return }
@@ -230,13 +230,10 @@ export default function NewAlbum() {
     const collectedSongs = songs.map((s, idx) => ({
       index: idx + 1,
       title: s.name,
-      duration: s.duration,
-      original_release_date: s.originalReleaseDate,
-      go_live_date: s.goLiveDate,
       genre: s.genre,
       sub_genre: s.subGenre,
       language: s.language,
-      moods: s.moods,
+      mood: s.mood,
       producer: s.producer,
       composer: s.composer,
       lyricist: s.lyricist,
@@ -244,6 +241,7 @@ export default function NewAlbum() {
       callertune_cut_name: s.callertuneCutName,
       yt_content_id: s.ytCid ? 'yes' : 'no',
       yt_beat: s.ytBeat ? 'yes' : 'no',
+      ...(s.ytBeat && s.ytBeatLink.trim() ? { yt_beat_link: s.ytBeatLink.trim() } : {}),
       explicit: s.explicit ? 'yes' : 'no',
       main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
       featured_artists: s.featuredArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple, instagram: a.instagram })),
@@ -251,6 +249,8 @@ export default function NewAlbum() {
 
     const fd = new FormData()
     fd.append('album_name', albumName.trim())
+    fd.append('original_release_date', originalReleaseDate)
+    fd.append('go_live_date', goLiveDate)
     fd.append('songs', JSON.stringify(collectedSongs))
     fd.append('album_description', albumDescription.trim())
     fd.append('additional_comments', additionalComments.trim())
@@ -335,6 +335,18 @@ export default function NewAlbum() {
             style={albumNameStyle}
           />
         </div>
+        <div className="form-grid" style={{ marginBottom: '20px' }}>
+          <div className="form-group">
+            <label className="form-label">Original Release Date <span className="req">*</span></label>
+            <input type="date" className="form-input" style={{ colorScheme: 'dark' }} value={originalReleaseDate} onChange={(e) => setOriginalReleaseDate(e.target.value)} />
+            <span className="form-hint">Date the album was first created or released</span>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Go Live Date <span className="req">*</span></label>
+            <input type="date" className="form-input" style={{ colorScheme: 'dark' }} value={goLiveDate} onChange={(e) => setGoLiveDate(e.target.value)} />
+            <span className="form-hint">Date the album should go live on platforms</span>
+          </div>
+        </div>
         <div className="cover-wrap">
           <div className="cover-preview">
             <img id="coverPreviewImg" alt="Cover preview" src={coverPreview || undefined} className={coverPreview ? 'visible' : ''} />
@@ -377,7 +389,6 @@ export default function NewAlbum() {
               onToggle={() => toggleSong(song.key)}
               onRemove={() => removeSong(song.key)}
               updateSong={updateSong}
-              toggleMood={toggleMood}
               addArtist={addArtist}
               removeArtist={removeArtist}
               updateArtist={updateArtist}
@@ -480,7 +491,7 @@ function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, lock
   )
 }
 
-function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, toggleMood, addArtist, removeArtist, updateArtist, handleSongAudio, maxArtists, profileData, songIndex, isNewArtist, customAllowed }) {
+function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, addArtist, removeArtist, updateArtist, handleSongAudio, maxArtists, profileData, songIndex, isNewArtist, customAllowed }) {
   const audioRef = useRef(null)
   const ytCid = ynClass('yn-btn', song.ytCid)
   const ytBeat = ynClass('yn-btn', song.ytBeat)
@@ -500,14 +511,6 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
         <div className="form-grid" style={{ marginTop: '16px' }}>
           <div className="form-group col-span-2"><label className="form-label">Song Name <span className="req">*</span></label>
             <input type="text" className="form-input" placeholder="Song title" value={song.name} onChange={(e) => { const v = e.target.value; updateSong(song.key, { name: v, callertuneCutName: v }); }} /></div>
-        </div>
-        <div className="form-grid-3" style={{ marginTop: '16px' }}>
-          <div className="form-group"><label className="form-label">Duration <span className="req">*</span></label>
-            <input type="text" className="form-input" placeholder="mm:ss" maxLength="5" value={song.duration} onChange={(e) => updateSong(song.key, { duration: e.target.value.replace(/[^0-9:]/g, '') })} /></div>
-          <div className="form-group"><label className="form-label">Original Release Date <span className="req">*</span></label>
-            <input type="date" className="form-input" style={{ colorScheme: 'dark' }} value={song.originalReleaseDate} onChange={(e) => updateSong(song.key, { originalReleaseDate: e.target.value })} /></div>
-          <div className="form-group"><label className="form-label">Go Live Date <span className="req">*</span></label>
-            <input type="date" className="form-input" style={{ colorScheme: 'dark' }} value={song.goLiveDate} onChange={(e) => updateSong(song.key, { goLiveDate: e.target.value })} /></div>
         </div>
         <div className="form-group" style={{ marginTop: '16px' }}><label className="form-label">Audio File <span className="req">*</span></label>
           <div className="drop-zone" style={{ height: '76px', flexDirection: 'row', gap: '14px', padding: '0 20px', borderColor: song.audioError ? '#f87171' : song.audioFile ? 'rgba(34,197,94,0.4)' : undefined }} onClick={() => audioRef.current && audioRef.current.click()}>
@@ -536,11 +539,8 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
               {LANGUAGES.map((l) => <option key={l}>{l}</option>)}</select></div>
         </div>
         <div className="form-group" style={{ marginTop: '16px' }}><label className="form-label">Mood <span className="opt-tag">(optional)</span></label>
-          <div className="mood-pills">
-            {MOODS.map((m) => (
-              <button key={m} type="button" className={`mood-pill${song.moods.includes(m) ? ' active' : ''}`} onClick={() => toggleMood(song.key, m)}>{m}</button>
-            ))}
-          </div></div>
+          <select className="form-input" value={song.mood} onChange={(e) => updateSong(song.key, { mood: e.target.value })}><option value="">Select mood</option>
+            {MOODS.map((m) => <option key={m}>{m}</option>)}</select></div>
         <div className="song-sub-label">Credits</div>
         <div className="form-grid">
           <div className="form-group"><label className="form-label">Music Producer <span className="opt-tag">(optional)</span></label>
@@ -557,9 +557,12 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, t
             <input type="text" className="form-input" placeholder="Optional callertune name" value={song.callertuneCutName} disabled readOnly /></div>
           <div className="form-group"><label className="form-label">YouTube Music / Beat <span className="req">*</span></label>
             <div className="yn-toggle">
-              <button type="button" className={ytBeat.no} onClick={() => updateSong(song.key, { ytBeat: false })}>No</button>
+              <button type="button" className={ytBeat.no} onClick={() => updateSong(song.key, { ytBeat: false, ytBeatLink: '' })}>No</button>
               <button type="button" className={ytBeat.yes} onClick={() => updateSong(song.key, { ytBeat: true })}>Yes</button>
-            </div></div>
+            </div>
+            {song.ytBeat && (
+              <input type="url" className="form-input" placeholder="https://www.youtube.com/watch?v=..." value={song.ytBeatLink} onChange={(e) => updateSong(song.key, { ytBeatLink: e.target.value })} style={{ marginTop: 8 }} />
+            )}</div>
           <div className="form-group"><label className="form-label">Explicit Content <span className="req">*</span></label>
             <div className="explicit-toggle">
               <button type="button" className={explicit.no} onClick={() => updateSong(song.key, { explicit: false })}>No</button>
