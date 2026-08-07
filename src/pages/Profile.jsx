@@ -156,12 +156,22 @@ export default function Profile() {
           {/* Full Name / Artist Name */}
           <div className="pf-form-row">
             <div className="pf-form-group">
-              <label className="pf-form-label">Full Name</label>
-              <input type="text" className="pf-form-input" value={form.fullName} disabled />
+              <label className="pf-form-label">
+                Full Name
+                {canEditUrls && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#4ade80', background: '#052e16', border: '1px solid #166534', borderRadius: 4, padding: '1px 6px' }}>Editable</span>}
+              </label>
+              <input type="text" className="pf-form-input" value={form.fullName}
+                disabled={!canEditUrls}
+                onChange={canEditUrls ? set('fullName') : undefined} />
             </div>
             <div className="pf-form-group">
-              <label className="pf-form-label">Artist / Stage Name</label>
-              <input type="text" className="pf-form-input" value={form.artistName} disabled />
+              <label className="pf-form-label">
+                Artist / Stage Name
+                {canEditUrls && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#4ade80', background: '#052e16', border: '1px solid #166534', borderRadius: 4, padding: '1px 6px' }}>Editable</span>}
+              </label>
+              <input type="text" className="pf-form-input" value={form.artistName}
+                disabled={!canEditUrls}
+                onChange={canEditUrls ? set('artistName') : undefined} />
             </div>
           </div>
 
@@ -172,8 +182,13 @@ export default function Profile() {
               <input type="email" className="pf-form-input" value={form.email} disabled />
             </div>
             <div className="pf-form-group">
-              <label className="pf-form-label">Phone Number</label>
-              <input type="tel" className="pf-form-input" value={form.phone} disabled />
+              <label className="pf-form-label">
+                Phone Number
+                {canEditUrls && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 500, color: '#4ade80', background: '#052e16', border: '1px solid #166534', borderRadius: 4, padding: '1px 6px' }}>Editable</span>}
+              </label>
+              <input type="tel" className="pf-form-input" value={form.phone}
+                disabled={!canEditUrls}
+                onChange={canEditUrls ? set('phone') : undefined} />
             </div>
           </div>
 
