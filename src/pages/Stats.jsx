@@ -1,19 +1,115 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import RevenueChart from '../components/charts/RevenueChart'
 import StreamsChart from '../components/charts/StreamsChart'
 import PlatformChart from '../components/charts/PlatformChart'
+import { getEarnings, getSongEarnings } from '../lib/earnings'
 
-const TOP_TRACKS = []
-const PLATFORM_SPLIT = []
-const GEO = []
+const fmtNum = (n) => (Number(n) || 0).toLocaleString('en-IN')
+const fmtRs = (n) => `₹${(Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-const RANGES = ['Last 3 Months', 'Last 6 Months', 'Last 12 Months', 'All Time']
+// Per-song platform + monthly breakdown modal.
+function SongDetailModal({ song, onClose }) {
+  const [detail, setDetail] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true); setError('')
+    getSongEarnings(song.submission_id)
+      .then((d) => { if (alive) setDetail(d) })
+      .catch(() => { if (alive) setError('Could not load song details.') })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [song.submission_id])
+
+  const maxStreams = detail?.platforms?.reduce((m, p) => Math.max(m, p.streams), 0) || 1
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={onClose}>
+      <div className="glass-card" style={{ width: '100%', maxWidth: 620, maxHeight: '88vh', overflow: 'auto', padding: 28 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800 }}>{song.song_title}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2 }}>{song.artist_name}</div>
+          </div>
+          <button className="btn btn-sm btn-ghost" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="stats-grid-2" style={{ marginBottom: 22 }}>
+          <div className="glass-card mini-stat-card">
+            <div className="mini-stat-label">Total Streams</div>
+            <div className="mini-stat-value">{fmtNum(song.streams)}</div>
+          </div>
+          <div className="glass-card mini-stat-card">
+            <div className="mini-stat-label">Total Revenue</div>
+            <div className="mini-stat-value" style={{ color: 'var(--accent)' }}>{fmtRs(song.revenue)}</div>
+          </div>
+        </div>
+
+        {loading && <div style={{ color: 'var(--text-muted)', padding: '1rem 0' }}>Loading…</div>}
+        {error && <div style={{ color: 'var(--red)', padding: '1rem 0' }}>{error}</div>}
+
+        {!loading && !error && detail && (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, marginBottom: 12 }}>By Platform</div>
+            {(detail.platforms || []).length === 0 && (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No platform data yet.</div>
+            )}
+            {(detail.platforms || []).map((p) => (
+              <div key={p.platform_group} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                  <span style={{ fontWeight: 600 }}>{p.platform_group}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{fmtNum(p.streams)} streams · <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{fmtRs(p.revenue)}</span></span>
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 100 }}>
+                  <div style={{ width: `${Math.max(3, (p.streams / maxStreams) * 100)}%`, height: '100%', background: 'linear-gradient(90deg,#FF9A60,var(--accent))', borderRadius: 100 }} />
+                </div>
+              </div>
+            ))}
+
+            {(detail.monthly || []).length > 0 && (
+              <>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, margin: '22px 0 12px' }}>Monthly</div>
+                <div className="data-table-wrap">
+                  <table className="data-table">
+                    <thead><tr><th>Month</th><th>Streams</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                      {detail.monthly.map((m, i) => (
+                        <tr key={i}>
+                          <td>{m.month} {m.year}</td>
+                          <td style={{ fontWeight: 600 }}>{fmtNum(m.streams)}</td>
+                          <td style={{ fontWeight: 600, color: 'var(--accent)' }}>{fmtRs(m.revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function Stats() {
-  const [range, setRange] = useState('Last 12 Months')
-  const [rangeOpen, setRangeOpen] = useState(false)
-  const [period, setPeriod] = useState('monthly')
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [openSong, setOpenSong] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    getEarnings()
+      .then((d) => { if (alive) setData(d) })
+      .catch(() => { if (alive) setData({ total_streams: 0, total_revenue: 0, available_balance: 0, songs: [] }) })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [])
+
+  const songs = data?.songs || []
 
   return (
     <>
@@ -25,31 +121,6 @@ export default function Stats() {
       <div className="page-header animate-in animate-in-delay-1">
         <h1 className="page-title">Stats &amp; Revenue</h1>
         <div className="page-header-actions">
-          <div style={{ position: 'relative' }}>
-            <button className="btn btn-outline" onClick={(e) => { e.stopPropagation(); setRangeOpen((v) => !v) }} style={{ gap: 8 }}>
-              <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              {range}
-              <svg viewBox="0 0 24 24" style={{ width: 12, height: 12, stroke: 'currentColor', fill: 'none', strokeWidth: 2.5 }}><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            {rangeOpen && (
-              <div
-                style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: 'rgba(18,14,10,0.97)', border: '0.5px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: 5, minWidth: 160, zIndex: 200, boxShadow: '0 8px 28px rgba(0,0,0,0.55)' }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {RANGES.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => { setRange(r); setRangeOpen(false) }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: r === range ? 'rgba(242,101,34,0.08)' : 'transparent', border: 'none', color: r === range ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 13, fontFamily: 'var(--font-display)', fontWeight: 600, cursor: 'pointer', borderRadius: 7, transition: 'background .15s' }}
-                    onMouseEnter={(e) => { if (r !== range) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff' } }}
-                    onMouseLeave={(e) => { if (r !== range) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' } }}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <Link to="/withdraw" className="btn btn-primary" style={{ textDecoration: 'none' }}>
             <svg viewBox="0 0 24 24" style={{ width: 15, height: 15, stroke: '#fff', fill: 'none', strokeWidth: 2 }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             Withdraw Earnings
@@ -61,13 +132,13 @@ export default function Stats() {
       <div className="stats-grid-2 animate-in animate-in-delay-2" style={{ isolation: 'isolate' }}>
         <div className="glass-card mini-stat-card">
           <div className="mini-stat-label">Total Streams</div>
-          <div className="mini-stat-value">0</div>
-          <div className="mini-stat-change" style={{ color: 'var(--text-muted)', fontSize: 12 }}>No data yet</div>
+          <div className="mini-stat-value">{loading ? '…' : fmtNum(data?.total_streams)}</div>
+          <div className="mini-stat-change" style={{ color: 'var(--text-muted)', fontSize: 12 }}>All time</div>
         </div>
         <div className="glass-card mini-stat-card">
           <div className="mini-stat-label">Total Revenue</div>
-          <div className="mini-stat-value">0</div>
-          <div className="mini-stat-change" style={{ color: 'var(--text-muted)', fontSize: 12 }}>No data yet</div>
+          <div className="mini-stat-value">{loading ? '…' : fmtRs(data?.total_revenue)}</div>
+          <div className="mini-stat-change" style={{ color: 'var(--text-muted)', fontSize: 12 }}>All time</div>
         </div>
       </div>
 
@@ -77,20 +148,19 @@ export default function Stats() {
       {/* Two-col: Streams + Platform */}
       <div className="two-col">
         <StreamsChart />
-
         <div className="chart-card glass-card animate-in animate-in-delay-5">
           <div className="chart-header">
             <div>
               <p className="chart-title">Platform Split</p>
-              <p className="chart-subtitle">Distribution by platform</p>
+              <p className="chart-subtitle">Open a track for its full platform breakdown</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
             <div className="chart-canvas-wrap" style={{ width: 180, height: 180, flexShrink: 0 }}>
               <PlatformChart hideList />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ color: 'var(--text-muted)', fontSize: 13, paddingTop: 8 }}>No platform data yet.</div>
+            <div style={{ flex: 1, color: 'var(--text-muted)', fontSize: 13 }}>
+              Click <strong style={{ color: 'var(--text-primary)' }}>Details</strong> on any track below to see how many streams came from each major distributor (Spotify, Apple Music, YouTube, …) and the revenue each generated.
             </div>
           </div>
         </div>
@@ -100,54 +170,43 @@ export default function Stats() {
       <div className="glass-card chart-card animate-in animate-in-delay-6">
         <div className="chart-header">
           <div>
-            <p className="chart-title">Top Performing Tracks</p>
-            <p className="chart-subtitle">{period === 'monthly' ? 'Your most streamed releases this month' : 'Your most streamed releases this year'}</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 8, padding: 3, gap: 2 }}>
-              {['monthly', 'yearly'].map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  style={{ padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-display)', cursor: 'pointer', border: 'none', transition: 'all .2s', background: period === p ? 'var(--accent)' : 'transparent', color: period === p ? '#fff' : 'var(--text-secondary)', boxShadow: period === p ? '0 2px 8px rgba(242,101,34,0.3)' : 'none' }}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </button>
-              ))}
-            </div>
-            <button className="btn btn-sm btn-outline">View All</button>
+            <p className="chart-title">Your Tracks</p>
+            <p className="chart-subtitle">Streams &amp; revenue per release — click Details for the platform split</p>
           </div>
         </div>
         <div className="data-table-wrap">
           <table className="data-table">
             <thead>
-              <tr>
-                <th>#</th><th>Track</th><th>Streams</th><th>Revenue</th><th>Trend</th><th>Top Platform</th>
-              </tr>
+              <tr><th>#</th><th>Track</th><th>Streams</th><th>Revenue</th><th>Top Platform</th><th></th></tr>
             </thead>
             <tbody>
-              {TOP_TRACKS.length === 0 && (
+              {loading && (
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</td></tr>
+              )}
+              {!loading && songs.length === 0 && (
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No stream data yet. Distribute your first release to see stats here.</td></tr>
               )}
-              {TOP_TRACKS.map((t) => (
-                <tr key={t.rank}>
-                  <td style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t.rank}</td>
+              {!loading && songs.map((t, i) => (
+                <tr key={t.submission_id || t.song_title || i}>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{i + 1}</td>
                   <td>
                     <div className="song-cell">
                       <div className="song-thumb"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><path d="M8 17V5l12-2v12"/></svg></div>
                       <div>
-                        <div className="song-name">{t.name}</div>
-                        <div className="song-artist">{t.artist}</div>
+                        <div className="song-name">{t.song_title}</div>
+                        <div className="song-artist">{t.artist_name}</div>
                       </div>
                     </div>
                   </td>
-                  <td style={{ fontWeight: 600 }}>{t.streams}</td>
-                  <td style={{ fontWeight: 600, color: 'var(--accent)' }}>{t.revenue}</td>
-                  <td className={t.trendUp ? 'trend-up' : 'trend-down'}>{t.trend}</td>
+                  <td style={{ fontWeight: 600 }}>{fmtNum(t.streams)}</td>
+                  <td style={{ fontWeight: 600, color: 'var(--accent)' }}>{fmtRs(t.revenue)}</td>
                   <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: t.platBg, borderRadius: 20, fontSize: 12, fontWeight: 600, color: t.platColor }}>
-                      {t.platform}
-                    </span>
+                    {t.top_platform && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: 20, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>{t.top_platform}</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button className="btn btn-sm btn-outline" disabled={!t.submission_id} onClick={() => setOpenSong(t)}>Details</button>
                   </td>
                 </tr>
               ))}
@@ -156,31 +215,7 @@ export default function Stats() {
         </div>
       </div>
 
-      {/* Geographic Reach */}
-      <div className="glass-card chart-card animate-in" style={{ animationDelay: '0.7s' }}>
-        <div className="chart-header">
-          <div>
-            <p className="chart-title">Geographic Reach</p>
-            <p className="chart-subtitle">Where your listeners are located</p>
-          </div>
-        </div>
-        <div className="geo-map-placeholder">
-          <div className="geo-dot" style={{ top: '35%', left: '25%' }} />
-          <div className="geo-dot" style={{ top: '30%', left: '48%', animationDelay: '0.5s' }} />
-          <div className="geo-dot" style={{ top: '45%', left: '52%', animationDelay: '1s' }} />
-          <div className="geo-dot" style={{ top: '32%', left: '72%', animationDelay: '0.3s' }} />
-          <div className="geo-dot" style={{ top: '55%', left: '78%', animationDelay: '0.8s' }} />
-          <div className="geo-dot" style={{ top: '65%', left: '30%', animationDelay: '1.2s' }} />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginTop: 24 }}>
-          {GEO.map((g) => (
-            <div key={g.country} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{g.country}</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700 }}>{g.pct}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {openSong && <SongDetailModal song={openSong} onClose={() => setOpenSong(null)} />}
     </>
   )
 }

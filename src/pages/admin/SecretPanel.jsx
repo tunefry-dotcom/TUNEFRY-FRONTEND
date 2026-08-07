@@ -139,6 +139,7 @@ function AdminSidebar({ active, onNav, onLock }) {
     { id: 'insta-link', label: 'Insta Link', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg> },
     { id: 'new-artist', label: 'New Artist Profile Updates', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> },
     { id: 'purchases', label: 'Plan Purchases', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
+    { id: 'withdrawals', label: 'Withdrawals', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
     { id: 'master-home', label: 'Master Home', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
     { id: 'announcements', label: 'Announcements', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> },
   ]
@@ -1569,6 +1570,138 @@ const SUBMISSION_VIEWS = [
   { id: 'insta-link',      title: 'Insta Link' },
 ]
 
+// ── Withdrawal requests view ─────────────────────────────────────────────────
+function WithdrawalRequestsView({ secret, onSessionExpired }) {
+  const [requests, setRequests] = useState([])
+  const [totalPending, setTotalPending] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState(null)
+
+  const fmtRs = (n) => `₹${(Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const load = useCallback(() => {
+    setLoading(true); setError('')
+    fetch(`${BASE}/admin/withdrawals`, { headers: { 'X-Admin-Secret': secret } })
+      .then((res) => {
+        if (res.status === 403) { onSessionExpired(); return null }
+        if (!res.ok) throw new Error('Failed to load withdrawals')
+        return res.json()
+      })
+      .then((data) => {
+        if (!data) return
+        setRequests(data.requests || [])
+        setTotalPending(data.total_pending || 0)
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [secret, onSessionExpired])
+
+  useEffect(() => { load() }, [load])
+
+  const markPaid = async (id) => {
+    setBusyId(id)
+    try {
+      const res = await fetch(`${BASE}/admin/withdrawals/${id}`, {
+        method: 'PATCH',
+        headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'paid' }),
+      })
+      if (res.status === 403) return onSessionExpired()
+      if (!res.ok) throw new Error('Update failed')
+      const data = await res.json()
+      setRequests((rs) => rs.map((r) => (r.id === id ? data.request : r)))
+      setTotalPending((p) => Math.max(0, p - Number(requests.find((r) => r.id === id)?.amount || 0)))
+    } catch (e) { alert(e.message) } finally { setBusyId(null) }
+  }
+
+  const del = async (id) => {
+    if (!window.confirm('Delete this withdrawal request? If it is not paid, the amount is credited back to the artist.')) return
+    setBusyId(id)
+    try {
+      const res = await fetch(`${BASE}/admin/withdrawals/${id}`, {
+        method: 'DELETE', headers: { 'X-Admin-Secret': secret },
+      })
+      if (res.status === 403) return onSessionExpired()
+      if (!res.ok) throw new Error('Delete failed')
+      setRequests((rs) => rs.filter((r) => r.id !== id))
+    } catch (e) { alert(e.message) } finally { setBusyId(null) }
+  }
+
+  return (
+    <div style={{ padding: '1.75rem 2rem', overflowY: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <h1 style={{ color: '#f0f0f0', fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>Withdrawal Requests</h1>
+        <button onClick={load} style={{ padding: '.5rem 1rem', borderRadius: 8, border: '1px solid #2a2a2a', background: '#141414', color: '#9ca3af', fontSize: '.82rem', cursor: 'pointer' }}>Refresh</button>
+      </div>
+      <div style={{ color: '#6b7280', fontSize: '.85rem', marginBottom: 20 }}>
+        {requests.length} request(s) · <span style={{ color: '#EAB308' }}>{fmtRs(totalPending)} pending payout</span>
+      </div>
+
+      {loading && <div style={{ color: '#6b7280' }}>Loading…</div>}
+      {error && <div style={{ color: '#f87171' }}>{error}</div>}
+      {!loading && !error && requests.length === 0 && <div style={{ color: '#6b7280' }}>No withdrawal requests yet.</div>}
+
+      <div style={{ display: 'grid', gap: 14 }}>
+        {requests.map((r) => {
+          const paid = r.status === 'paid'
+          const s = r.snapshot || {}
+          const pd = r.payout_details || {}
+          return (
+            <div key={r.id} style={{ background: paid ? '#0c0c0c' : '#111', border: `1px solid ${paid ? '#1a1a1a' : '#242424'}`, borderRadius: 12, padding: '1.1rem 1.25rem', opacity: paid ? 0.55 : 1, transition: 'opacity .2s' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 240 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 700, color: paid ? '#22C55E' : '#ff8a4c' }}>{fmtRs(r.amount)}</span>
+                    <span style={{ padding: '2px 9px', borderRadius: 100, fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', background: paid ? 'rgba(34,197,94,.12)' : 'rgba(234,179,8,.12)', color: paid ? '#22C55E' : '#EAB308', border: `1px solid ${paid ? 'rgba(34,197,94,.3)' : 'rgba(234,179,8,.3)'}` }}>{paid ? 'Paid' : 'Pending'}</span>
+                  </div>
+                  <div style={{ color: '#e5e7eb', fontSize: '.9rem', fontWeight: 600 }}>{s.full_name || s.artist_name || r.user_email}</div>
+                  <div style={{ color: '#6b7280', fontSize: '.78rem', marginTop: 2 }}>{r.user_email}</div>
+                  <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>
+                    Requested {r.requested_at ? new Date(r.requested_at).toLocaleString('en-IN') : '—'}
+                    {paid && r.processed_at ? ` · Paid ${new Date(r.processed_at).toLocaleString('en-IN')}` : ''}
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: 240, fontSize: '.8rem', color: '#9ca3af', lineHeight: 1.7 }}>
+                  <div style={{ color: '#e5e7eb', fontWeight: 600, marginBottom: 4 }}>Artist details</div>
+                  <div>Plan: <span style={{ color: '#e5e7eb' }}>{s.plan_name || s.plan || '—'}</span></div>
+                  {s.artist_name && <div>Artist name: <span style={{ color: '#e5e7eb' }}>{s.artist_name}</span></div>}
+                  <div>Phone: <span style={{ color: '#e5e7eb' }}>{s.phone || '—'}</span></div>
+                  <div>Address: <span style={{ color: '#e5e7eb' }}>{[s.city, s.state].filter(Boolean).join(', ') || '—'}</span></div>
+                  <div>Age: <span style={{ color: '#e5e7eb' }}>{s.age ?? '—'}</span></div>
+                  <div style={{ color: '#e5e7eb', fontWeight: 600, margin: '8px 0 4px' }}>Payout ({r.method === 'bank' ? 'Bank' : 'UPI'})</div>
+                  {r.method === 'upi'
+                    ? <div>UPI: <span style={{ color: '#e5e7eb', fontFamily: 'monospace' }}>{pd.upi_id || '—'}</span></div>
+                    : <>
+                        <div>A/C holder: <span style={{ color: '#e5e7eb' }}>{pd.account_holder || '—'}</span></div>
+                        <div>Bank: <span style={{ color: '#e5e7eb' }}>{pd.bank_name || '—'}</span></div>
+                        <div>A/C no: <span style={{ color: '#e5e7eb', fontFamily: 'monospace' }}>{pd.account_number || '—'}</span></div>
+                        <div>IFSC: <span style={{ color: '#e5e7eb', fontFamily: 'monospace' }}>{pd.ifsc || '—'}</span></div>
+                      </>}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 120 }}>
+                  {!paid && (
+                    <button disabled={busyId === r.id} onClick={() => markPaid(r.id)}
+                      style={{ padding: '.5rem .9rem', borderRadius: 8, border: '1px solid rgba(34,197,94,.35)', background: 'rgba(34,197,94,.12)', color: '#22C55E', fontSize: '.82rem', fontWeight: 600, cursor: busyId === r.id ? 'wait' : 'pointer' }}>
+                      Mark Paid
+                    </button>
+                  )}
+                  <button disabled={busyId === r.id} onClick={() => del(r.id)}
+                    style={{ padding: '.5rem .9rem', borderRadius: 8, border: '1px solid #3a1a1a', background: 'transparent', color: '#f87171', fontSize: '.82rem', fontWeight: 600, cursor: busyId === r.id ? 'wait' : 'pointer' }}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function SecretPanel() {
   const storedSecret = sessionStorage.getItem(STORAGE_KEY) || ''
   const [secret, setSecret] = useState(storedSecret)
@@ -1591,6 +1724,7 @@ export default function SecretPanel() {
         {activeNav === 'users' && <UsersView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'new-artist' && <NewArtistView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'purchases' && <PurchasesView secret={secret} onSessionExpired={handleLock} />}
+        {activeNav === 'withdrawals' && <WithdrawalRequestsView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'master-home' && <MasterHomeView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'announcements' && <AnnouncementsView secret={secret} onSessionExpired={handleLock} />}
         {subView && (
