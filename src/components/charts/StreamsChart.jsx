@@ -7,10 +7,11 @@ import { Bar } from 'react-chartjs-2'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
-const LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const DATA = [45000, 62000, 55000, 78000, 69000, 88000, 95000, 82000, 105000, 98000, 115000, 128000]
+const DUMMY_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const DUMMY_DATA = [45000, 62000, 55000, 78000, 69000, 88000, 95000, 82000, 105000, 98000, 115000, 128000]
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-const options = {
+const BASE_OPTIONS = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -23,7 +24,7 @@ const options = {
       bodyColor: '#8A8A8A',
       padding: 12,
       callbacks: {
-        label: (ctx) => ` ${(ctx.raw / 1000).toFixed(0)}K streams`,
+        label: (ctx) => ` ${(ctx.raw / 1000).toFixed(1)}K streams`,
       },
     },
   },
@@ -35,7 +36,7 @@ const options = {
     },
     y: {
       grid: { color: 'rgba(255,255,255,0.04)' },
-      ticks: { color: '#555', font: { size: 12 }, callback: (v) => `${v / 1000}K` },
+      ticks: { color: '#555', font: { size: 12 }, callback: (v) => `${v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}` },
       border: { display: false },
     },
   },
@@ -44,21 +45,35 @@ const options = {
   },
 }
 
-export default function StreamsChart() {
+const gradientFill = (ctx) => {
+  const chart = ctx.chart
+  const { ctx: c, chartArea } = chart
+  if (!chartArea) return 'rgba(242,101,34,0.5)'
+  const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+  gradient.addColorStop(0, 'rgba(242,101,34,0.8)')
+  gradient.addColorStop(1, 'rgba(242,101,34,0.25)')
+  return gradient
+}
+
+export default function StreamsChart({ monthly }) {
+  const isReal = Array.isArray(monthly) && monthly.length > 0
+
+  let labels, chartData
+  if (isReal) {
+    const sorted = [...monthly].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+    labels = sorted.map((m) => `${MONTH_NAMES[m.month - 1]} ${m.year}`)
+    chartData = sorted.map((m) => Number(m.streams) || 0)
+  } else {
+    labels = DUMMY_LABELS
+    chartData = DUMMY_DATA
+  }
+
   const data = {
-    labels: LABELS,
+    labels,
     datasets: [
       {
-        data: DATA,
-        backgroundColor: (ctx) => {
-          const chart = ctx.chart
-          const { ctx: c, chartArea } = chart
-          if (!chartArea) return 'rgba(242,101,34,0.5)'
-          const gradient = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-          gradient.addColorStop(0, 'rgba(242,101,34,0.8)')
-          gradient.addColorStop(1, 'rgba(242,101,34,0.25)')
-          return gradient
-        },
+        data: chartData,
+        backgroundColor: gradientFill,
         hoverBackgroundColor: '#F26522',
         barPercentage: 0.6,
       },
@@ -74,7 +89,7 @@ export default function StreamsChart() {
         </div>
       </div>
       <div className="chart-canvas-wrap">
-        <Bar data={data} options={options} />
+        <Bar data={data} options={BASE_OPTIONS} />
       </div>
     </div>
   )
