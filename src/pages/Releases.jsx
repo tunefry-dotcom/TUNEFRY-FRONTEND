@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 import { API_BASE as BASE } from '../lib/config.js'
@@ -23,6 +23,7 @@ function fmtDate(iso) {
 
 export default function Releases() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState('All')
   const [releases, setReleases] = useState([])
   const [loading, setLoading] = useState(true)
@@ -103,7 +104,13 @@ export default function Releases() {
                         <span style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 700, background: sm.bg, border: `0.5px solid ${sm.border}`, color: sm.color }}>{sm.label}</span>
                       </td>
                       <td>
-                        <button className="btn btn-sm btn-ghost">Details</button>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          disabled={!r.id}
+                          onClick={() => navigate(`/releases/${r.id}`)}
+                        >
+                          Details
+                        </button>
                       </td>
                     </tr>
                   )

@@ -43,6 +43,7 @@ import YourPlan from './pages/YourPlan'
 import Daily from './pages/daily/Daily'
 import AiBlog from './pages/daily/AiBlog'
 
+import ReleaseDetail from './pages/ReleaseDetail'
 import SongUpload from './pages/upload/SongUpload'
 import AlbumUpload from './pages/upload/AlbumUpload'
 import NewSong from './pages/upload/NewSong'
@@ -117,6 +118,7 @@ export default function App() {
         {/* Dashboard routes — no right panel (more horizontal space) */}
         <Route element={<ProtectedRoute><AppLayout showRightPanel={false} /></ProtectedRoute>}>
           <Route path="/stats" element={<Stats />} />
+          <Route path="/releases/:submissionId" element={<ReleaseDetail />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/withdraw" element={<Withdrawal />} />
           <Route path="/daily/ai-blog" element={<AiBlog />} />
