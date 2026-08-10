@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { PLANS } from '../data/plans'
 import { getProfile } from '../lib/profile'
 import { startUpgrade, ProfileIncompleteError } from '../lib/payment'
+import { API_BASE } from '../lib/config'
 import '../styles/your-plan.css'
 
 function Check({ ck }) {
@@ -41,7 +42,7 @@ export default function YourPlan() {
   async function handleSelectFree() {
     setBusyPlan('free')
     try {
-      const res = await fetch('https://backend1-xzx5.onrender.com/billing/select-free', {
+      const res = await fetch(`${API_BASE}/billing/select-free`, {
         method: 'POST',
         credentials: 'include',
       })
