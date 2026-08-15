@@ -6,6 +6,7 @@ import { API_BASE as BASE } from '../lib/config.js'
 import { getEarnings } from '../lib/earnings.js'
 
 const fmtNum = (n) => (n ?? 0).toLocaleString('en-IN')
+const UGC_GROUPS = new Set(['Facebook', 'TikTok'])
 
 const VELOCITY_BARS = [
   { label: 'Spotify', height: 100, hot: false, delay: '0s' },
@@ -105,6 +106,11 @@ export default function Overview() {
     getEarnings().then(setEarnings).catch(() => {})
   }, [user?.email])
 
+  const distStreams = (earnings?.platforms ?? [])
+    .filter(p => !UGC_GROUPS.has(p.platform_group))
+    .reduce((sum, p) => sum + p.streams, 0)
+  const displayStreams = ugcOn ? (earnings?.total_streams ?? 0) : distStreams
+
   const dismissPitch = (id) => {
     const uid = user?.id || ''
     const pitched = JSON.parse(localStorage.getItem(`tf_pitched_${uid}`) || '[]')
@@ -161,7 +167,7 @@ export default function Overview() {
               <svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><path d="M8 17V5l12-2v12"/></svg>
             </div>
           </div>
-          <div className="stat-value">{fmtNum(earnings?.total_streams)}</div>
+          <div className="stat-value">{fmtNum(displayStreams)}</div>
           <div className="stat-badge neutral" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
             All-time across all platforms
           </div>
