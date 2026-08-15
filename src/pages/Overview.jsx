@@ -3,6 +3,9 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 import { API_BASE as BASE } from '../lib/config.js'
+import { getEarnings } from '../lib/earnings.js'
+
+const fmtNum = (n) => (n ?? 0).toLocaleString('en-IN')
 
 const VELOCITY_BARS = [
   { label: 'Spotify', height: 100, hot: false, delay: '0s' },
@@ -36,6 +39,7 @@ export default function Overview() {
   const [ugcOn, setUgcOn] = useState(false)
   const [pitchSongs, setPitchSongs] = useState([])
   const [toasts, setToasts] = useState([])
+  const [earnings, setEarnings] = useState(null)
 
   // Show success toast when redirected from a form submission
   useEffect(() => {
@@ -96,14 +100,17 @@ export default function Overview() {
     return () => window.removeEventListener('focus', checkSubmissions)
   }, [user?.id, user?.email]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!user?.email) return
+    getEarnings().then(setEarnings).catch(() => {})
+  }, [user?.email])
+
   const dismissPitch = (id) => {
     const uid = user?.id || ''
     const pitched = JSON.parse(localStorage.getItem(`tf_pitched_${uid}`) || '[]')
     localStorage.setItem(`tf_pitched_${uid}`, JSON.stringify([...pitched, id]))
     setPitchSongs((prev) => prev.filter((s) => s.id !== id))
   }
-
-  const streamValue = '0'
 
   return (
     <div className="overview-content">
@@ -154,9 +161,9 @@ export default function Overview() {
               <svg viewBox="0 0 24 24"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><path d="M8 17V5l12-2v12"/></svg>
             </div>
           </div>
-          <div className="stat-value">{streamValue}</div>
+          <div className="stat-value">{fmtNum(earnings?.total_streams)}</div>
           <div className="stat-badge neutral" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-            Streams will appear once your music goes live
+            All-time across all platforms
           </div>
           {/* UGC Toggle */}
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: '0.5px solid var(--border-subtle)' }}>
@@ -195,9 +202,9 @@ export default function Overview() {
               <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
             </div>
           </div>
-          <div className="stat-value">₹0</div>
+          <div className="stat-value">₹{Math.round(earnings?.total_revenue ?? 0).toLocaleString('en-IN')}</div>
           <div className="stat-badge neutral" style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-            Revenue appears after first payout cycle
+            All-time estimated earnings
           </div>
         </div>
       </div>
