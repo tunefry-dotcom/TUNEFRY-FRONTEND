@@ -9,7 +9,16 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const DUMMY_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DUMMY_DATA = [45000, 62000, 55000, 78000, 69000, 88000, 95000, 82000, 105000, 98000, 115000, 128000]
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// period_month in the DB is a full name string ("January", "February", …)
+const MONTH_ORDER = {
+  January:1, February:2, March:3, April:4, May:5, June:6,
+  July:7, August:8, September:9, October:10, November:11, December:12,
+}
+const MONTH_SHORT = {
+  January:'Jan', February:'Feb', March:'Mar', April:'Apr', May:'May', June:'Jun',
+  July:'Jul', August:'Aug', September:'Sep', October:'Oct', November:'Nov', December:'Dec',
+}
 
 const BASE_OPTIONS = {
   responsive: true,
@@ -60,8 +69,10 @@ export default function StreamsChart({ monthly }) {
 
   let labels, chartData
   if (isReal) {
-    const sorted = [...monthly].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
-    labels = sorted.map((m) => `${MONTH_NAMES[m.month - 1]} ${m.year}`)
+    const sorted = [...monthly].sort((a, b) =>
+      a.year !== b.year ? a.year - b.year : (MONTH_ORDER[a.month] || 0) - (MONTH_ORDER[b.month] || 0)
+    )
+    labels = sorted.map((m) => `${MONTH_SHORT[m.month] || m.month} ${m.year}`)
     chartData = sorted.map((m) => Number(m.streams) || 0)
   } else {
     labels = DUMMY_LABELS

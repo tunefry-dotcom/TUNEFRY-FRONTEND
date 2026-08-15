@@ -143,11 +143,11 @@ export default function Stats() {
       </div>
 
       {/* Revenue Chart */}
-      <RevenueChart />
+      <RevenueChart monthly={data?.monthly} />
 
       {/* Two-col: Streams + Platform */}
       <div className="two-col">
-        <StreamsChart />
+        <StreamsChart monthly={data?.monthly} />
         <div className="chart-card glass-card animate-in animate-in-delay-5">
           <div className="chart-header">
             <div>
@@ -157,7 +157,7 @@ export default function Stats() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
             <div className="chart-canvas-wrap" style={{ width: 180, height: 180, flexShrink: 0 }}>
-              <PlatformChart hideList />
+              <PlatformChart platforms={data?.platforms} hideList />
             </div>
             <div style={{ flex: 1, color: 'var(--text-muted)', fontSize: 13 }}>
               Click <strong style={{ color: 'var(--text-primary)' }}>Details</strong> on any track below to see how many streams came from each major distributor (Spotify, Apple Music, YouTube, …) and the revenue each generated.
