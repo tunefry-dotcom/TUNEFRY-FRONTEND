@@ -243,8 +243,8 @@ export default function NewAlbum() {
       yt_beat: s.ytBeat ? 'yes' : 'no',
       ...(s.ytBeat && s.ytBeatLink.trim() ? { yt_beat_link: s.ytBeatLink.trim() } : {}),
       explicit: s.explicit ? 'yes' : 'no',
-      main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
-      featured_artists: s.featuredArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple, instagram: a.instagram })),
+      main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple, instagram: a.instagram })),
+      featured_artists: s.featuredArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
     }))
 
     const fd = new FormData()
@@ -485,7 +485,9 @@ function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, lock
         <div className="form-group col-span-2"><label className="form-label">Artist Name {isMain && <span className="req">*</span>}</label><input type="text" className="form-input" placeholder="Artist name" disabled={lockName} value={artist.name} onChange={(e) => updateArtist(song.key, type, artist.key, 'name', e.target.value)} /></div>
         <div className="form-group"><label className="form-label">Spotify Profile Link {isMain && !lockSpotify ? <span className="opt-tag">(optional)</span> : null}</label><input type="url" className="form-input" placeholder="https://open.spotify.com/artist/..." disabled={lockSpotify} value={artist.spotify} onChange={(e) => updateArtist(song.key, type, artist.key, 'spotify', e.target.value)} /></div>
         <div className="form-group"><label className="form-label">Apple Music Profile Link {isMain && !lockApple ? <span className="opt-tag">(optional)</span> : null}</label><input type="url" className="form-input" placeholder="https://music.apple.com/artist/..." disabled={lockApple} value={artist.apple} onChange={(e) => updateArtist(song.key, type, artist.key, 'apple', e.target.value)} /></div>
-        <div className="form-group col-span-2"><label className="form-label">Instagram <span className="opt-tag">(optional)</span></label><input type="url" className="form-input" placeholder="https://www.instagram.com/artist/..." value={artist.instagram} onChange={(e) => updateArtist(song.key, type, artist.key, 'instagram', e.target.value)} /></div>
+        {isMain && (
+          <div className="form-group col-span-2"><label className="form-label">Instagram <span className="opt-tag">(optional)</span></label><input type="url" className="form-input" placeholder="https://www.instagram.com/artist/..." value={artist.instagram} onChange={(e) => updateArtist(song.key, type, artist.key, 'instagram', e.target.value)} /></div>
+        )}
       </div>
     </div>
   )

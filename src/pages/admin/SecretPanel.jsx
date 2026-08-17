@@ -508,16 +508,14 @@ function DetailModal({ sub, secret, onClose, onReviewed, onDeleted }) {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {v.map((track, i) => {
-                        const artists = (track.main_artists || []).map((a) => a.name).filter(Boolean).join(', ')
-                        const featured = (track.featured_artists || []).map((a) => a.name).filter(Boolean).join(', ')
+                        const mainList = (track.main_artists || []).filter((a) => a && (a.name || a.spotify || a.apple_music || a.instagram))
+                        const featuredList = (track.featured_artists || []).filter((a) => a && (a.name || a.spotify || a.apple_music))
                         const rows = [
                           { label: 'Track', value: track.index ?? i + 1 },
                           { label: 'Title', value: track.title || track.songName },
                           { label: 'Genre', value: [track.genre, track.sub_genre || track.subGenre].filter(Boolean).join(' / ') },
                           { label: 'Language', value: track.language },
                           { label: 'Mood', value: track.mood ?? (Array.isArray(track.moods) ? track.moods.join(', ') : track.moods) },
-                          { label: 'Main Artists', value: artists },
-                          { label: 'Featured Artists', value: featured },
                           { label: 'Lyricist', value: track.lyricist },
                           { label: 'Composer', value: track.composer },
                           { label: 'Producer', value: track.producer || track.musicProducer },
@@ -530,6 +528,11 @@ function DetailModal({ sub, secret, onClose, onReviewed, onDeleted }) {
                           { label: 'Go Live', value: track.go_live_date || track.goLiveDate },
                           { label: 'Callertune', value: track.callertune_timing || track.callertuneTiming },
                         ].filter((r) => r.value)
+                        const artistCard = (a, keys) => (
+                          <div style={{ background: '#111', borderRadius: 6, padding: '6px 10px', marginTop: 4, fontSize: '.78rem', color: '#d1d5db', wordBreak: 'break-word' }}>
+                            {keys.filter((k) => a[k]).map((k) => `${fmtKey(k)}: ${a[k]}`).join(' · ')}
+                          </div>
+                        )
                         return (
                           <div key={i} style={{ background: '#1a1a1a', borderRadius: 8, padding: '10px 14px', border: '1px solid #2a2a2a' }}>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
@@ -540,6 +543,22 @@ function DetailModal({ sub, secret, onClose, onReviewed, onDeleted }) {
                                 </span>
                               ))}
                             </div>
+                            {mainList.length > 0 && (
+                              <div style={{ marginTop: 8 }}>
+                                <div style={{ color: '#555', fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Main Artists ({mainList.length})</div>
+                                {mainList.map((a, ai) => (
+                                  <div key={ai}>{artistCard(a, ['name', 'spotify', 'apple_music', 'instagram'])}</div>
+                                ))}
+                              </div>
+                            )}
+                            {featuredList.length > 0 && (
+                              <div style={{ marginTop: 8 }}>
+                                <div style={{ color: '#555', fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Featured Artists ({featuredList.length})</div>
+                                {featuredList.map((a, ai) => (
+                                  <div key={ai}>{artistCard(a, ['name', 'spotify', 'apple_music'])}</div>
+                                ))}
+                              </div>
+                            )}
                             {track.audio_key && (
                               <div style={{ marginTop: 6, fontSize: '.72rem', color: '#444' }}>{track.audio_key}</div>
                             )}

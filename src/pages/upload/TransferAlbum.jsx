@@ -299,8 +299,8 @@ export default function TransferAlbum() {
       ...(s.ytBeat && s.ytBeatLink.trim() ? { yt_beat_link: s.ytBeatLink.trim() } : {}),
       explicit: s.explicit ? 'yes' : 'no',
       isrc: s.isrcNo,
-      main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
-      featured_artists: s.featuredArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple, instagram: a.instagram })),
+      main_artists: s.mainArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple, instagram: a.instagram })),
+      featured_artists: s.featuredArtists.map((a) => ({ name: a.name, spotify: a.spotify, apple_music: a.apple })),
     }));
 
     const fd = new FormData();
@@ -890,6 +890,30 @@ export default function TransferAlbum() {
               value={albumName}
               onChange={(e) => setAlbumName(e.target.value)}
               style={nameHighlight ? highlightStyle : undefined}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">
+              Original Release Date <span className="req">*</span>
+            </label>
+            <input
+              type="date"
+              className="form-input"
+              style={{ colorScheme: 'dark' }}
+              value={originalReleaseDate}
+              onChange={(e) => setOriginalReleaseDate(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">
+              Go Live Date <span className="req">*</span>
+            </label>
+            <input
+              type="date"
+              className="form-input"
+              style={{ colorScheme: 'dark' }}
+              value={goLiveDate}
+              onChange={(e) => setGoLiveDate(e.target.value)}
             />
           </div>
         </div>
