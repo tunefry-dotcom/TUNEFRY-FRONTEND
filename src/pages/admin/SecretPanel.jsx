@@ -140,6 +140,7 @@ function AdminSidebar({ active, onNav, onLock }) {
     { id: 'new-artist', label: 'New Artist Profile Updates', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg> },
     { id: 'purchases', label: 'Plan Purchases', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
     { id: 'withdrawals', label: 'Withdrawals', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
+    { id: 'earnings', label: 'Earnings', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
     { id: 'master-home', label: 'Master Home', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
     { id: 'announcements', label: 'Announcements', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> },
   ]
@@ -1390,14 +1391,25 @@ function MasterHomeView({ secret, onSessionExpired }) {
       {/* YouTube Testimonials */}
       <div style={card}>
         <div style={secLabel}>YouTube Testimonials</div>
-        {homeData.yt_testimonials.map((t, i) => (
-          <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
-            <input placeholder="YouTube URL or Video ID" value={t.video_id} onChange={(e) => updateYT(i, 'video_id', e.target.value)} style={{ ...inp, flex: 2 }} />
-            <input placeholder="Title" value={t.title} onChange={(e) => updateYT(i, 'title', e.target.value)} style={{ ...inp, flex: 2 }} />
-            <input placeholder="Channel" value={t.channel} onChange={(e) => updateYT(i, 'channel', e.target.value)} style={{ ...inp, flex: 1 }} />
-            <button onClick={() => removeYT(i)} style={delBtn}>&#x2715;</button>
-          </div>
-        ))}
+        {homeData.yt_testimonials.map((t, i) => {
+          const vid = extractYtId(t.video_id)
+          return (
+            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+              {vid && (
+                <img
+                  src={`https://img.youtube.com/vi/${vid}/mqdefault.jpg`}
+                  alt=""
+                  style={{ width: '80px', height: '45px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }}
+                  onError={(e) => { e.currentTarget.style.display = 'none' }}
+                />
+              )}
+              <input placeholder="YouTube URL or Video ID" value={t.video_id} onChange={(e) => updateYT(i, 'video_id', e.target.value)} style={{ ...inp, flex: 2 }} />
+              <input placeholder="Title" value={t.title} onChange={(e) => updateYT(i, 'title', e.target.value)} style={{ ...inp, flex: 2 }} />
+              <input placeholder="Channel" value={t.channel} onChange={(e) => updateYT(i, 'channel', e.target.value)} style={{ ...inp, flex: 1 }} />
+              <button onClick={() => removeYT(i)} style={delBtn}>&#x2715;</button>
+            </div>
+          )
+        })}
         <button onClick={addYT} style={addBtn}>+ Add Video</button>
       </div>
 
@@ -1579,6 +1591,472 @@ function AnnouncementsView({ secret, onSessionExpired }) {
 }
 
 // ── Root ────────────────────────────────────────────────────────────────────
+// ── Earnings view ────────────────────────────────────────────────────────────
+const _MO = { January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12 }
+const MONTHS_LIST = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const PLATFORMS_LIST = ['Spotify','Apple Music','YouTube','YouTube Music','Facebook','Amazon','JioSaavn','Gaana','TikTok','Other']
+
+function EarningsView({ secret, onSessionExpired }) {
+  const fmtRs = (n) => `₹${(Number(n)||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}`
+  const H = { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' }
+
+  const [searchInput, setSearchInput] = useState('')
+  const [candidates, setCandidates] = useState([])
+  const [artistData, setArtistData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [busyRowId, setBusyRowId] = useState(null)
+  const [editCell, setEditCell] = useState(null)  // { rowId, field, draft }
+  const [expanded, setExpanded] = useState({})    // { songTitle: bool }
+  const [modal, setModal] = useState(null)
+  const [subs, setSubs] = useState([])
+  const [modalError, setModalError] = useState('')
+  const [modalBusy, setModalBusy] = useState(false)
+
+  const doSearch = async (e) => {
+    e.preventDefault()
+    const q = searchInput.trim()
+    if (!q) return
+    setLoading(true); setError(''); setCandidates([]); setArtistData(null)
+    try {
+      const param = q.includes('@') ? `email=${encodeURIComponent(q)}` : `q=${encodeURIComponent(q)}`
+      const r = await fetch(`${BASE}/admin/artist-earnings?${param}`, { headers: H })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) { setError(d.detail || 'Error'); return }
+      if (d.candidates) {
+        setCandidates(d.candidates)
+      } else {
+        setArtistData(d)
+        const exp = {}
+        ;(d.rows || []).forEach(row => { exp[row.song_title] = true })
+        setExpanded(exp)
+      }
+    } catch { setError('Network error') }
+    finally { setLoading(false) }
+  }
+
+  const pickCandidate = async (email) => {
+    setCandidates([]); setSearchInput(email); setLoading(true); setError('')
+    try {
+      const r = await fetch(`${BASE}/admin/artist-earnings?email=${encodeURIComponent(email)}`, { headers: H })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) { setError(d.detail || 'Error'); return }
+      setArtistData(d)
+      const exp = {}
+      ;(d.rows || []).forEach(row => { exp[row.song_title] = true })
+      setExpanded(exp)
+    } catch { setError('Network error') }
+    finally { setLoading(false) }
+  }
+
+  const commitEdit = async (rowId, field, value) => {
+    setBusyRowId(rowId)
+    try {
+      const body = field === 'streams' ? { streams: Number(value) } : { revenue: String(value) }
+      const r = await fetch(`${BASE}/admin/song-stats/${rowId}`, { method: 'PATCH', headers: H, body: JSON.stringify(body) })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) { setError(d.detail || 'Update failed'); return }
+      setArtistData(prev => ({
+        artist: { ...prev.artist, ...d.balance },
+        rows: prev.rows.map(row => row.id === rowId ? { ...row, ...d.row } : row),
+      }))
+    } catch { setError('Update failed') }
+    finally { setBusyRowId(null); setEditCell(null) }
+  }
+
+  const deleteRow = async (rowId) => {
+    if (!window.confirm("Delete this stat row? The artist's balance will be recalculated.")) return
+    setBusyRowId(rowId)
+    try {
+      const r = await fetch(`${BASE}/admin/song-stats/${rowId}`, { method: 'DELETE', headers: H })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) { setError(d.detail || 'Delete failed'); return }
+      setArtistData(prev => ({
+        artist: { ...prev.artist, ...d.balance },
+        rows: prev.rows.filter(row => row.id !== rowId),
+      }))
+    } catch { setError('Delete failed') }
+    finally { setBusyRowId(null) }
+  }
+
+  const openModal = async (prefill = {}) => {
+    const email = artistData?.artist?.email || ''
+    setModalError('')
+    setModal({
+      user_email: email,
+      song_title: '',
+      artist_name: artistData?.artist?.artist_name || '',
+      period_month: '',
+      period_year: String(new Date().getFullYear()),
+      submission_id: '',
+      entries: [{ platform: 'Spotify', streams: '', revenue: '' }],
+      ...prefill,
+    })
+    if (email) {
+      try {
+        const r = await fetch(`${BASE}/admin/song-stats/submissions/${encodeURIComponent(email)}`, { headers: H })
+        if (r.ok) { const d = await r.json(); setSubs(d.submissions || []) }
+      } catch { /* ignore */ }
+    }
+  }
+
+  const submitModal = async () => {
+    if (!modal.song_title.trim()) { setModalError('Song title is required'); return }
+    if (!modal.period_month) { setModalError('Month is required'); return }
+    const year = Number(modal.period_year)
+    if (!year || year < 1990 || year > new Date().getFullYear() + 1) { setModalError('Enter a valid year'); return }
+    if (!modal.entries.length) { setModalError('Add at least one platform entry'); return }
+    setModalBusy(true); setModalError('')
+    try {
+      const r = await fetch(`${BASE}/admin/song-stats`, {
+        method: 'POST', headers: H,
+        body: JSON.stringify({
+          user_email: modal.user_email,
+          song_title: modal.song_title.trim(),
+          artist_name: modal.artist_name.trim() || modal.song_title.trim(),
+          period_month: modal.period_month,
+          period_year: year,
+          submission_id: modal.submission_id || null,
+          entries: modal.entries.map(e => ({
+            platform: e.platform,
+            streams: Number(e.streams) || 0,
+            revenue: String(Number(e.revenue) || 0),
+          })),
+        }),
+      })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) { setModalError(d.detail || 'Failed'); return }
+      setArtistData(prev => ({
+        artist: { ...prev.artist, ...d.balance },
+        rows: [
+          ...(prev?.rows || []).filter(row => !d.rows.find(nr => nr.id === row.id)),
+          ...d.rows,
+        ],
+      }))
+      setExpanded(prev => ({ ...prev, [modal.song_title.trim()]: true }))
+      setModal(null)
+    } catch { setModalError('Network error') }
+    finally { setModalBusy(false) }
+  }
+
+  // Compute grouped view from flat rows on each render (fast enough for admin)
+  const grouped = (() => {
+    if (!artistData?.rows?.length) return []
+    const songs = {}
+    for (const row of artistData.rows) {
+      if (!songs[row.song_title]) songs[row.song_title] = { totalStreams: 0, totalRevenue: 0, months: {} }
+      const s = songs[row.song_title]
+      s.totalStreams += row.streams || 0
+      s.totalRevenue += row.revenue || 0
+      const mk = `${row.period_year}-${String(_MO[row.period_month] || 0).padStart(2, '0')}`
+      if (!s.months[mk]) s.months[mk] = { month: row.period_month, year: row.period_year, streams: 0, revenue: 0, rows: [] }
+      s.months[mk].streams += row.streams || 0
+      s.months[mk].revenue += row.revenue || 0
+      s.months[mk].rows.push(row)
+    }
+    return Object.entries(songs)
+      .sort(([, a], [, b]) => b.totalStreams - a.totalStreams)
+      .map(([title, data]) => ({
+        title,
+        totalStreams: data.totalStreams,
+        totalRevenue: data.totalRevenue,
+        months: Object.values(data.months).sort((a, b) => {
+          if (b.year !== a.year) return b.year - a.year
+          return (_MO[b.month] || 0) - (_MO[a.month] || 0)
+        }),
+      }))
+  })()
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #1a1a1a', flexShrink: 0 }}>
+        <h2 style={{ color: '#f0f0f0', margin: '0 0 .25rem', fontSize: '1.2rem', fontWeight: 700 }}>Earnings Editor</h2>
+        <p style={{ color: '#555', fontSize: '.85rem', margin: 0 }}>Browse, edit, and add stream stats for any artist</p>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
+        {/* Search */}
+        <form onSubmit={doSearch} style={{ display: 'flex', gap: 8, marginBottom: '1.25rem' }}>
+          <input
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            placeholder="Search by email or artist name…"
+            style={{ flex: 1, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '.65rem 1rem', color: '#f0f0f0', fontSize: '.9rem', outline: 'none' }}
+          />
+          <button type="submit" disabled={loading}
+            style={{ padding: '.65rem 1.25rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#ff6b2b,#ff4500)', color: '#fff', fontWeight: 600, fontSize: '.9rem', cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
+            {loading ? '…' : 'Search'}
+          </button>
+        </form>
+
+        {/* Name search candidates */}
+        {candidates.length > 0 && (
+          <div style={{ background: '#111', border: '1px solid #222', borderRadius: 10, marginBottom: '1.25rem', overflow: 'hidden' }}>
+            <div style={{ padding: '.65rem 1rem', borderBottom: '1px solid #1a1a1a', color: '#9ca3af', fontSize: '.8rem' }}>{candidates.length} match(es) — select an artist</div>
+            {candidates.map(c => (
+              <button key={c.email} onClick={() => pickCandidate(c.email)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '.7rem 1rem', background: 'transparent', border: 'none', borderBottom: '1px solid #1a1a1a', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,107,43,.06)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: avatarColor(c.email), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '.8rem', fontWeight: 700, flexShrink: 0 }}>{initials(c.email)}</div>
+                <div>
+                  <div style={{ color: '#f0f0f0', fontSize: '.88rem', fontWeight: 600 }}>{c.artist_name || '—'}</div>
+                  <div style={{ color: '#6b7280', fontSize: '.77rem' }}>{c.email}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Error */}
+        {error && <div style={{ background: '#2d0a0a', border: '1px solid #7f1d1d', borderRadius: 8, padding: '.75rem 1rem', marginBottom: '1rem', color: '#f87171', fontSize: '.85rem' }}>{error}</div>}
+
+        {/* Artist panel */}
+        {artistData && (
+          <>
+            {/* Balance cards */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+              {[
+                { label: 'Total Earned',   val: fmtRs(artistData.artist?.total_earned),       color: '#4ade80' },
+                { label: 'Withdrawn',      val: fmtRs(artistData.artist?.total_withdrawn),     color: '#f87171' },
+                { label: 'Available',      val: fmtRs(artistData.artist?.available_balance),   color: '#ff8a4c' },
+              ].map(({ label, val, color }) => (
+                <div key={label} style={{ flex: 1, minWidth: 150, background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: '.9rem 1.1rem' }}>
+                  <div style={{ color: '#4b5563', fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>{label}</div>
+                  <div style={{ color, fontSize: '1.2rem', fontWeight: 700, fontFamily: 'monospace' }}>{val}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Warning */}
+            <div style={{ background: 'rgba(234,179,8,.07)', border: '1px solid rgba(234,179,8,.22)', borderRadius: 8, padding: '.6rem 1rem', marginBottom: '1rem', color: '#fbbf24', fontSize: '.8rem' }}>
+              ⚠ Rows for months covered by the next royalty ingestion will be overwritten when that script runs.
+            </div>
+
+            {/* Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.875rem' }}>
+              <div style={{ color: '#6b7280', fontSize: '.83rem' }}>
+                {artistData.rows.length === 0
+                  ? 'No stats yet — add the first entry below.'
+                  : `${artistData.rows.length} row(s) across ${grouped.length} song(s)`}
+              </div>
+              <button onClick={() => openModal()}
+                style={{ padding: '.45rem .95rem', borderRadius: 8, border: '1px solid rgba(255,107,43,.4)', background: 'rgba(255,107,43,.1)', color: '#ff8a4c', fontSize: '.83rem', fontWeight: 600, cursor: 'pointer' }}>
+                + Add Entry
+              </button>
+            </div>
+
+            {/* Grouped tree */}
+            {grouped.map(song => (
+              <div key={song.title} style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 10, marginBottom: 8, overflow: 'hidden' }}>
+                {/* Song row */}
+                <button onClick={() => setExpanded(prev => ({ ...prev, [song.title]: !prev[song.title] }))}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '.85rem 1.25rem', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <span style={{ color: '#ff6b2b', fontSize: '.72rem', display: 'inline-block', transform: expanded[song.title] ? 'rotate(90deg)' : 'none', transition: 'transform .12s' }}>▶</span>
+                  <div style={{ flex: 1, minWidth: 0, color: '#f0f0f0', fontWeight: 600, fontSize: '.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</div>
+                  <div style={{ display: 'flex', gap: 18, flexShrink: 0 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ color: '#4b5563', fontSize: '.67rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Streams</div>
+                      <div style={{ color: '#d1d5db', fontSize: '.85rem', fontWeight: 600 }}>{song.totalStreams.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ color: '#4b5563', fontSize: '.67rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Revenue</div>
+                      <div style={{ color: '#4ade80', fontSize: '.85rem', fontWeight: 600 }}>{fmtRs(song.totalRevenue)}</div>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Months */}
+                {expanded[song.title] && (
+                  <div style={{ borderTop: '1px solid #1a1a1a' }}>
+                    {song.months.map(mon => (
+                      <div key={`${mon.year}-${mon.month}`} style={{ borderBottom: '1px solid #161616' }}>
+                        {/* Month header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '.5rem 1.5rem', background: 'rgba(255,255,255,.02)' }}>
+                          <div style={{ flex: 1, color: '#9ca3af', fontSize: '.8rem', fontWeight: 600 }}>{mon.month} {mon.year}</div>
+                          <div style={{ color: '#4b5563', fontSize: '.75rem' }}>{mon.streams.toLocaleString('en-IN')} streams · {fmtRs(mon.revenue)}</div>
+                          <button
+                            onClick={() => openModal({ song_title: song.title, period_month: mon.month, period_year: String(mon.year), artist_name: mon.rows[0]?.artist_name || '' })}
+                            style={{ padding: '.22rem .55rem', borderRadius: 5, border: '1px solid #2a2a2a', background: 'transparent', color: '#6b7280', fontSize: '.72rem', cursor: 'pointer' }}>
+                            + platform
+                          </button>
+                        </div>
+
+                        {/* Platform table */}
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              {['Platform', 'Streams', 'Revenue', ''].map((h, hi) => (
+                                <th key={hi} style={{ padding: '.38rem 1.5rem', textAlign: hi > 0 ? 'right' : 'left', color: '#374151', fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #161616' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...mon.rows].sort((a, b) => (b.streams || 0) - (a.streams || 0)).map(row => {
+                              const busy = busyRowId === row.id
+                              const editingStreams = editCell?.rowId === row.id && editCell?.field === 'streams'
+                              const editingRevenue = editCell?.rowId === row.id && editCell?.field === 'revenue'
+                              return (
+                                <tr key={row.id} style={{ borderBottom: '1px solid #0d0d0d', opacity: busy ? 0.45 : 1 }}>
+                                  <td style={{ padding: '.5rem 1.5rem', color: '#d1d5db', fontSize: '.83rem' }}>{row.platform}</td>
+
+                                  {/* Streams */}
+                                  <td style={{ padding: '.5rem 1.5rem', textAlign: 'right' }}>
+                                    {editingStreams ? (
+                                      <input autoFocus type="number" min="0" value={editCell.draft}
+                                        onChange={e => setEditCell(c => ({ ...c, draft: e.target.value }))}
+                                        onBlur={() => commitEdit(row.id, 'streams', editCell.draft)}
+                                        onKeyDown={e => { if (e.key === 'Enter') commitEdit(row.id, 'streams', editCell.draft); if (e.key === 'Escape') setEditCell(null) }}
+                                        style={{ width: 90, background: '#1a1a1a', border: '1px solid #ff6b2b', borderRadius: 5, padding: '.28rem .5rem', color: '#f0f0f0', fontSize: '.83rem', outline: 'none', textAlign: 'right' }} />
+                                    ) : (
+                                      <span title="Click to edit" style={{ color: '#d1d5db', fontSize: '.83rem', fontFamily: 'monospace', cursor: 'pointer' }}
+                                        onClick={() => !busy && setEditCell({ rowId: row.id, field: 'streams', draft: String(row.streams || 0) })}>
+                                        {(row.streams || 0).toLocaleString('en-IN')}
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* Revenue */}
+                                  <td style={{ padding: '.5rem 1.5rem', textAlign: 'right' }}>
+                                    {editingRevenue ? (
+                                      <input autoFocus type="number" min="0" step="0.01" value={editCell.draft}
+                                        onChange={e => setEditCell(c => ({ ...c, draft: e.target.value }))}
+                                        onBlur={() => commitEdit(row.id, 'revenue', editCell.draft)}
+                                        onKeyDown={e => { if (e.key === 'Enter') commitEdit(row.id, 'revenue', editCell.draft); if (e.key === 'Escape') setEditCell(null) }}
+                                        style={{ width: 100, background: '#1a1a1a', border: '1px solid #ff6b2b', borderRadius: 5, padding: '.28rem .5rem', color: '#f0f0f0', fontSize: '.83rem', outline: 'none', textAlign: 'right' }} />
+                                    ) : (
+                                      <span title="Click to edit" style={{ color: '#4ade80', fontSize: '.83rem', fontFamily: 'monospace', cursor: 'pointer' }}
+                                        onClick={() => !busy && setEditCell({ rowId: row.id, field: 'revenue', draft: String(row.revenue || 0) })}>
+                                        {fmtRs(row.revenue)}
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* Delete */}
+                                  <td style={{ padding: '.5rem 1.5rem', textAlign: 'right' }}>
+                                    <button disabled={busy} onClick={() => deleteRow(row.id)}
+                                      style={{ padding: '.28rem .55rem', borderRadius: 5, border: '1px solid #3a1a1a', background: 'transparent', color: '#f87171', fontSize: '.76rem', cursor: busy ? 'wait' : 'pointer' }}>
+                                      Delete
+                                    </button>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+
+                    {/* Add month */}
+                    <div style={{ padding: '.55rem 1.5rem' }}>
+                      <button onClick={() => openModal({ song_title: song.title, artist_name: song.months[0]?.rows[0]?.artist_name || '' })}
+                        style={{ padding: '.3rem .7rem', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#6b7280', fontSize: '.78rem', cursor: 'pointer' }}>
+                        + Add month for this song
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Add/Edit Modal */}
+      {modal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.82)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: '#111', border: '1px solid #222', borderRadius: 14, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: '1.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ color: '#f0f0f0', margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Add Stats Entry</h3>
+              <button onClick={() => setModal(null)} style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1 }}>×</button>
+            </div>
+
+            {modalError && <div style={{ background: '#2d0a0a', border: '1px solid #7f1d1d', borderRadius: 8, padding: '.6rem .9rem', marginBottom: '.875rem', color: '#f87171', fontSize: '.82rem' }}>{modalError}</div>}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={lbl}>Song Title *</label>
+                <input value={modal.song_title} onChange={e => setModal(m => ({ ...m, song_title: e.target.value }))} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Artist Name</label>
+                <input value={modal.artist_name} onChange={e => setModal(m => ({ ...m, artist_name: e.target.value }))} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Submission (optional)</label>
+                <select value={modal.submission_id} onChange={e => setModal(m => ({ ...m, submission_id: e.target.value }))} style={inp}>
+                  <option value="">— none —</option>
+                  {subs.map(s => <option key={s.id} value={s.id}>{s.title || s.type} ({s.status})</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Month *</label>
+                <select value={modal.period_month} onChange={e => setModal(m => ({ ...m, period_month: e.target.value }))} style={inp}>
+                  <option value="">Select month</option>
+                  {MONTHS_LIST.map(mo => <option key={mo} value={mo}>{mo}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Year *</label>
+                <input type="number" value={modal.period_year} onChange={e => setModal(m => ({ ...m, period_year: e.target.value }))} style={inp} />
+              </div>
+            </div>
+
+            {/* Platform entries */}
+            <div style={{ marginBottom: '1.1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 6, marginBottom: 5 }}>
+                {['Platform', 'Streams', 'Revenue ₹', ''].map((h, i) => (
+                  <div key={i} style={{ color: '#374151', fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>{h}</div>
+                ))}
+              </div>
+              {modal.entries.map((entry, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 6, marginBottom: 6 }}>
+                  <select value={entry.platform}
+                    onChange={e => setModal(m => ({ ...m, entries: m.entries.map((en, idx) => idx === i ? { ...en, platform: e.target.value } : en) }))}
+                    style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, padding: '.52rem .7rem', color: '#f0f0f0', fontSize: '.85rem', outline: 'none' }}>
+                    {PLATFORMS_LIST.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <input type="number" min="0" placeholder="0" value={entry.streams}
+                    onChange={e => setModal(m => ({ ...m, entries: m.entries.map((en, idx) => idx === i ? { ...en, streams: e.target.value } : en) }))}
+                    style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, padding: '.52rem .7rem', color: '#f0f0f0', fontSize: '.85rem', outline: 'none' }} />
+                  <input type="number" min="0" step="0.01" placeholder="0.00" value={entry.revenue}
+                    onChange={e => setModal(m => ({ ...m, entries: m.entries.map((en, idx) => idx === i ? { ...en, revenue: e.target.value } : en) }))}
+                    style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, padding: '.52rem .7rem', color: '#f0f0f0', fontSize: '.85rem', outline: 'none' }} />
+                  <button onClick={() => setModal(m => ({ ...m, entries: m.entries.filter((_, idx) => idx !== i) }))}
+                    disabled={modal.entries.length === 1}
+                    style={{ padding: '.52rem .65rem', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#6b7280', cursor: modal.entries.length === 1 ? 'default' : 'pointer', opacity: modal.entries.length === 1 ? 0.3 : 1 }}>×</button>
+                </div>
+              ))}
+              <button onClick={() => setModal(m => ({ ...m, entries: [...m.entries, { platform: 'Spotify', streams: '', revenue: '' }] }))}
+                style={{ padding: '.38rem .75rem', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#6b7280', fontSize: '.78rem', cursor: 'pointer', marginTop: 2 }}>
+                + Add platform row
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setModal(null)} style={{ padding: '.58rem 1.1rem', borderRadius: 8, border: '1px solid #2a2a2a', background: 'transparent', color: '#9ca3af', fontSize: '.88rem', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={submitModal} disabled={modalBusy}
+                style={{ padding: '.58rem 1.3rem', borderRadius: 8, border: 'none', background: modalBusy ? '#2a2a2a' : 'linear-gradient(135deg,#ff6b2b,#ff4500)', color: modalBusy ? '#555' : '#fff', fontWeight: 600, fontSize: '.88rem', cursor: modalBusy ? 'wait' : 'pointer' }}>
+                {modalBusy ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Shared modal input styles (defined outside to avoid re-creation on render)
+const lbl = { display: 'block', color: '#6b7280', fontSize: '.72rem', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.05em' }
+const inp = { width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.58rem .85rem', color: '#f0f0f0', fontSize: '.88rem', outline: 'none', boxSizing: 'border-box' }
+
 const SUBMISSION_VIEWS = [
   { id: 'new-songs',       title: 'New Songs' },
   { id: 'transfer-songs',  title: 'Transfer Songs' },
@@ -1744,6 +2222,7 @@ export default function SecretPanel() {
         {activeNav === 'new-artist' && <NewArtistView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'purchases' && <PurchasesView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'withdrawals' && <WithdrawalRequestsView secret={secret} onSessionExpired={handleLock} />}
+        {activeNav === 'earnings' && <EarningsView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'master-home' && <MasterHomeView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'announcements' && <AnnouncementsView secret={secret} onSessionExpired={handleLock} />}
         {subView && (

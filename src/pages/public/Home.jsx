@@ -799,10 +799,19 @@ export default function Home() {
             {[...displayYtCards, ...displayYtCards].map((c, i) => (
               <div key={i} className="yt-card" onClick={() => setYtId(c.video_id || c.videoId)}>
                 <div className="yt-thumb">
-                  <div
-                    className="yt-thumb-bg"
-                    style={{ background: c.bg || 'linear-gradient(135deg,#1a0a2e,#2d1060)', position: 'absolute', inset: 0, borderRadius: '10px 10px 0 0' }}
-                  />
+                  {c.thumbnail_url ? (
+                    <img
+                      src={c.thumbnail_url}
+                      alt={c.title}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px 10px 0 0' }}
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                  ) : (
+                    <div
+                      className="yt-thumb-bg"
+                      style={{ background: c.bg || 'linear-gradient(135deg,#1a0a2e,#2d1060)', position: 'absolute', inset: 0, borderRadius: '10px 10px 0 0' }}
+                    />
+                  )}
                   <div className="yt-play-btn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
                       <polygon points="5 3 19 12 5 21 5 3" />
