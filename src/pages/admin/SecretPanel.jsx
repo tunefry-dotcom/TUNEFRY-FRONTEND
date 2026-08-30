@@ -195,6 +195,13 @@ function UsersView({ secret, onSessionExpired }) {
   const [editMsg, setEditMsg] = useState('')
   const [deletingId, setDeletingId] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [addUserOpen, setAddUserOpen] = useState(false)
+  const [addUserForm, setAddUserForm] = useState({ email: '', password: '', full_name: '', artist_name: '', phone: '', plan: 'free' })
+  const [addUserSaving, setAddUserSaving] = useState(false)
+  const [addUserMsg, setAddUserMsg] = useState('')
+  const [setPwValue, setSetPwValue] = useState('')
+  const [setPwSaving, setSetPwSaving] = useState(false)
+  const [setPwMsg, setSetPwMsg] = useState('')
 
   const fetchUsers = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -255,6 +262,41 @@ function UsersView({ secret, onSessionExpired }) {
     finally { setEditSaving(false) }
   }
 
+  const handleAddUser = async () => {
+    if (!addUserForm.email || !addUserForm.password) { setAddUserMsg('Email and password are required'); return }
+    setAddUserSaving(true); setAddUserMsg('')
+    try {
+      const res = await fetch(`${BASE}/admin/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': secret },
+        body: JSON.stringify(addUserForm),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) throw new Error((await res.json()).detail || 'Create failed')
+      setAddUserMsg('User created!')
+      setAddUserForm({ email: '', password: '', full_name: '', artist_name: '', phone: '', plan: 'free' })
+      setTimeout(() => { setAddUserOpen(false); setAddUserMsg(''); fetchUsers(true) }, 1200)
+    } catch (e) { setAddUserMsg(e.message) }
+    finally { setAddUserSaving(false) }
+  }
+
+  const handleSetPassword = async () => {
+    if (!setPwValue || setPwValue.length < 6) { setSetPwMsg('Min 6 characters'); return }
+    setSetPwSaving(true); setSetPwMsg('')
+    try {
+      const res = await fetch(`${BASE}/admin/users/${editingUser.id}/password`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': secret },
+        body: JSON.stringify({ password: setPwValue }),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) throw new Error((await res.json()).detail || 'Failed')
+      setSetPwMsg('Password updated!')
+      setSetPwValue('')
+    } catch (e) { setSetPwMsg(e.message) }
+    finally { setSetPwSaving(false) }
+  }
+
   const filtered = search.trim()
     ? users.filter((u) => { const q = search.toLowerCase(); return u.email.toLowerCase().includes(q) || u.full_name.toLowerCase().includes(q) })
     : users
@@ -272,6 +314,10 @@ function UsersView({ secret, onSessionExpired }) {
             <input type="text" placeholder="Search email or name…" value={search} onChange={(e) => setSearch(e.target.value)}
               style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.55rem .8rem .55rem 2rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', width: 220 }} />
           </div>
+          <button onClick={() => { setAddUserOpen(true); setAddUserMsg('') }}
+            style={{ background: '#ff6b2b', border: 'none', borderRadius: 7, padding: '.55rem .9rem', color: '#fff', cursor: 'pointer', fontSize: '.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+            + Add User
+          </button>
           <button onClick={fetchUsers} disabled={loading} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.55rem .8rem', color: '#9ca3af', cursor: 'pointer', fontSize: '.82rem', display: 'flex', alignItems: 'center', gap: 5 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             Refresh
@@ -393,12 +439,75 @@ function UsersView({ secret, onSessionExpired }) {
               <textarea value={editForm.bio || ''} onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))} rows={3}
                 style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', resize: 'vertical' }} />
             </label>
+            {/* Set Password */}
+            <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: '1rem', marginBottom: '1rem' }}>
+              <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 8 }}>Set New Password</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input type="password" placeholder="New password (min 6 chars)" value={setPwValue}
+                  onChange={e => { setSetPwValue(e.target.value); setSetPwMsg('') }}
+                  style={{ flex: 1, minWidth: 180, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.45rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none' }} />
+                <button onClick={handleSetPassword} disabled={setPwSaving}
+                  style={{ padding: '.45rem 1rem', borderRadius: 7, border: 'none', background: '#1e3a5f', color: '#60a5fa', fontWeight: 600, fontSize: '.82rem', cursor: setPwSaving ? 'default' : 'pointer', opacity: setPwSaving ? .6 : 1, whiteSpace: 'nowrap' }}>
+                  {setPwSaving ? '…' : 'Set Password'}
+                </button>
+                {setPwMsg && <span style={{ color: setPwMsg === 'Password updated!' ? '#4ade80' : '#f87171', fontSize: '.82rem' }}>{setPwMsg}</span>}
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <button onClick={handleEditSave} disabled={editSaving}
                 style={{ padding: '.5rem 1.2rem', borderRadius: 8, border: 'none', background: '#ff6b2b', color: '#fff', fontWeight: 600, fontSize: '.85rem', cursor: editSaving ? 'default' : 'pointer', opacity: editSaving ? .6 : 1 }}>
                 {editSaving ? 'Saving…' : 'Save Changes'}
               </button>
               {editMsg && <span style={{ color: editMsg === 'Saved!' ? '#4ade80' : '#f87171', fontSize: '.84rem' }}>{editMsg}</span>}
+            </div>
+          </div>
+        </div>
+      )}
+      {addUserOpen && (
+        <div onClick={(e) => { if (e.target === e.currentTarget) setAddUserOpen(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+          <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 14, padding: '1.5rem', width: '100%', maxWidth: 480 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+              <h3 style={{ color: '#f0f0f0', margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Add New User</h3>
+              <button onClick={() => setAddUserOpen(false)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1.3rem', lineHeight: 1, padding: '0 0 0 1rem' }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[['Email *', 'email', 'email', 'artist@example.com'], ['Password *', 'password', 'password', 'Min 6 characters']].map(([label, key, type, ph]) => (
+                <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>{label}</span>
+                  <input type={type} placeholder={ph} value={addUserForm[key]}
+                    onChange={e => setAddUserForm(p => ({ ...p, [key]: e.target.value }))}
+                    style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none' }} />
+                </label>
+              ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+                {[['Full Name', 'full_name'], ['Artist Name', 'artist_name'], ['Phone', 'phone']].map(([label, key]) => (
+                  <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>{label}</span>
+                    <input type="text" value={addUserForm[key]}
+                      onChange={e => setAddUserForm(p => ({ ...p, [key]: e.target.value }))}
+                      style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none' }} />
+                  </label>
+                ))}
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>Plan</span>
+                  <select value={addUserForm.plan} onChange={e => setAddUserForm(p => ({ ...p, plan: e.target.value }))}
+                    style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', cursor: 'pointer' }}>
+                    {Object.entries(PLAN_NAMES).map(([slug, name]) => (
+                      <option key={slug} value={slug}>{name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: '1.25rem' }}>
+              <button onClick={handleAddUser} disabled={addUserSaving}
+                style={{ padding: '.5rem 1.2rem', borderRadius: 8, border: 'none', background: '#ff6b2b', color: '#fff', fontWeight: 600, fontSize: '.85rem', cursor: addUserSaving ? 'default' : 'pointer', opacity: addUserSaving ? .6 : 1 }}>
+                {addUserSaving ? 'Creating…' : 'Create User'}
+              </button>
+              {addUserMsg && <span style={{ color: addUserMsg === 'User created!' ? '#4ade80' : '#f87171', fontSize: '.84rem' }}>{addUserMsg}</span>}
             </div>
           </div>
         </div>
