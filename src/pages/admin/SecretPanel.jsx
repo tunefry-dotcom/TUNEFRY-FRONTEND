@@ -57,6 +57,16 @@ function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+function isoToDateInput(iso) {
+  if (!iso) return ''
+  return String(iso).slice(0, 10)
+}
+
+function isExpired(iso) {
+  if (!iso) return false
+  return new Date(iso) <= new Date()
+}
+
 function fmtKey(k) {
   return k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -243,10 +253,16 @@ function UsersView({ secret, onSessionExpired }) {
   const handleEditSave = async () => {
     setEditSaving(true); setEditMsg('')
     try {
+      // Only include expires_at when it has actually changed — avoids a spurious
+      // subscriptions write on every profile edit for users with null expiry.
+      const payload = { ...editForm }
+      if (payload.expires_at === isoToDateInput(editingUser.expires_at)) {
+        delete payload.expires_at
+      }
       const res = await fetch(`${BASE}/admin/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': secret },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(payload),
       })
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) throw new Error((await res.json()).detail || 'Save failed')
@@ -255,6 +271,11 @@ function UsersView({ secret, onSessionExpired }) {
         ...u, ...editForm,
         plan: editForm.plan || u.plan,
         plan_name: data.plan_name || PLAN_NAMES[editForm.plan] || u.plan_name,
+        // Use server-canonical ISO timestamp when returned; otherwise derive from
+        // the YYYY-MM-DD form value (null when admin cleared it).
+        expires_at: data.expires_at !== undefined
+          ? data.expires_at
+          : (editForm.expires_at ? `${editForm.expires_at}T23:59:59+00:00` : u.expires_at),
       } : u))
       setEditMsg('Saved!')
       setTimeout(() => setEditingUser(null), 800)
@@ -348,7 +369,15 @@ function UsersView({ secret, onSessionExpired }) {
                     </div>
                     <div style={{ color: '#d1d5db', fontSize: '.83rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.artist_name || <span style={{ color: '#555', fontStyle: 'italic' }}>—</span>}</div>
                     <div style={{ color: '#d1d5db', fontSize: '.83rem' }}>{u.phone || <span style={{ color: '#555', fontStyle: 'italic' }}>—</span>}</div>
-                    <span style={{ display: 'inline-block', padding: '.22rem .6rem', borderRadius: 5, fontSize: '.75rem', fontWeight: 600, background: ps.bg, color: ps.text, border: `1px solid ${ps.border}` }}>{u.plan_name}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <span style={{ display: 'inline-block', padding: '.22rem .6rem', borderRadius: 5, fontSize: '.75rem', fontWeight: 600, background: ps.bg, color: ps.text, border: `1px solid ${ps.border}` }}>{u.plan_name}</span>
+                      {u.plan !== 'free' && u.expires_at && (
+                        <span style={{ fontSize: '.71rem', color: isExpired(u.expires_at) ? '#f87171' : '#6b7280' }}>Exp: {fmtDate(u.expires_at)}</span>
+                      )}
+                      {u.plan !== 'free' && !u.expires_at && (
+                        <span style={{ fontSize: '.71rem', color: '#374151', fontStyle: 'italic' }}>No expiry</span>
+                      )}
+                    </div>
                     <div style={{ color: '#6b7280', fontSize: '.8rem' }}>{fmtDate(u.created_at)}</div>
                     <div style={{ color: '#6b7280', fontSize: '.8rem' }}>{fmtDate(u.last_sign_in_at)}</div>
                     <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
@@ -364,6 +393,7 @@ function UsersView({ secret, onSessionExpired }) {
                             instagram: u.instagram || '', youtube_url: u.youtube_url || '',
                             custom_label_name: u.custom_label_name || '',
                             plan: u.plan || 'free',
+                            expires_at: isoToDateInput(u.expires_at),
                           })
                           setEditMsg('')
                         }}
@@ -410,6 +440,18 @@ function UsersView({ secret, onSessionExpired }) {
                   <option key={slug} value={slug}>{name}</option>
                 ))}
               </select>
+            </label>
+
+            {/* Plan Valid Till */}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '1.1rem' }}>
+              <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>Plan Valid Till</span>
+              <input
+                type="date"
+                value={editForm.expires_at || ''}
+                onChange={e => setEditForm(p => ({ ...p, expires_at: e.target.value }))}
+                style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none', colorScheme: 'dark' }}
+              />
+              <span style={{ color: '#4b5563', fontSize: '.72rem' }}>Leave blank to never expire (e.g. complimentary plan)</span>
             </label>
 
             {/* Profile fields */}
