@@ -150,6 +150,7 @@ export default function NewSong() {
 
   // Label name — editable for Double Artist / Label plans (server-validated entitlement)
   const customAllowed = canAccess(user, FEATURES.CUSTOM_LABEL);
+  const isDoubleOrLabel = user?.plan === 'double-artist' || user?.plan === 'label';
   const [showLabelUpgrade, setShowLabelUpgrade] = useState(false);
   const [savedLabel, setSavedLabel] = useState(
     (localStorage.getItem('tunefryCustomLabelName') || '').trim()
@@ -180,6 +181,7 @@ export default function NewSong() {
     getProfile().then((p) => {
       const merged = { ...p, artist_name: p.artist_name || user?.artist_name || '' }
       setProfileData(merged)
+      if (customAllowed && p.custom_label_name) setSavedLabel(p.custom_label_name.trim())
       if (merged.artist_name || merged.spotify_url || merged.apple_music_url) {
         mainCounter.current += 1
         const n = mainCounter.current
@@ -512,7 +514,7 @@ export default function NewSong() {
               <div className="form-grid">
                 <div className="form-group col-span-2"><label className="form-label">Artist Name <span className="req">*</span></label>
                   <input type="text" className="form-input" name={`main_artists[${i}][name]`} placeholder="Main artist name" value={a.name}
-                    disabled={i === 0 && !!profileData?.artist_name}
+                    disabled={i === 0 && !!profileData?.artist_name && !isDoubleOrLabel}
                     onChange={(e) => updateMainArtist(a.key, 'name', e.target.value)} /></div>
                 <div className="form-group"><label className="form-label">Spotify Profile Link {i === 0 && !isNewArtist && !profileData?.spotify_url ? <span className="req">*</span> : i === 0 && profileData?.spotify_url ? null : <span className="opt-tag">(optional)</span>}</label>
                   <input type="url" className="form-input" name={`main_artists[${i}][spotify]`} placeholder="https://open.spotify.com/artist/..." value={a.spotify}

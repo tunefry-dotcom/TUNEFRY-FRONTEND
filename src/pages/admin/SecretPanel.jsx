@@ -316,6 +316,7 @@ function UsersView({ secret, onSessionExpired }) {
                             bio: u.bio || '', spotify_url: u.spotify_url || '',
                             apple_music_url: u.apple_music_url || '',
                             instagram: u.instagram || '', youtube_url: u.youtube_url || '',
+                            custom_label_name: u.custom_label_name || '',
                             plan: u.plan || 'free',
                           })
                           setEditMsg('')
@@ -379,6 +380,13 @@ function UsersView({ secret, onSessionExpired }) {
                     style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none' }} />
                 </label>
               ))}
+              {(editForm.plan === 'double-artist' || editForm.plan === 'label') && (
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>Label Name</span>
+                  <input value={editForm.custom_label_name || ''} onChange={e => setEditForm(p => ({ ...p, custom_label_name: e.target.value }))}
+                    style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7, padding: '.48rem .7rem', color: '#f0f0f0', fontSize: '.84rem', outline: 'none' }} />
+                </label>
+              )}
             </div>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '1.25rem' }}>
               <span style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase' }}>Bio</span>

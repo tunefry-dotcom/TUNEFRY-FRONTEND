@@ -63,6 +63,7 @@ export default function NewAlbum() {
   const navigate = useNavigate()
   const maxArtists = planMaxArtists(user?.plan)
   const customAllowed = canAccess(user, FEATURES.CUSTOM_LABEL)
+  const isDoubleOrLabel = user?.plan === 'double-artist' || user?.plan === 'label'
   const newArtistUsed = (() => { try { return !!localStorage.getItem(`tf_new_artist_${user?.id}`) } catch { return false } })()
   const [isNewArtist, setIsNewArtist] = useState(false)
   const [artistLinkError, setArtistLinkError] = useState('')
@@ -585,7 +586,7 @@ function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, a
         <div>
           {song.mainArtists.map((a, i) => (
             <ArtistGroup key={a.key} song={song} type="main" artist={a} num={i + 1} updateArtist={updateArtist} removeArtist={removeArtist}
-              locked={songIndex === 0 && i === 0 ? profileData : null} isNewArtist={songIndex === 0 && i === 0 ? isNewArtist : false} customAllowed={customAllowed} />
+              locked={songIndex === 0 && i === 0 && !isDoubleOrLabel ? profileData : null} isNewArtist={songIndex === 0 && i === 0 ? isNewArtist : false} customAllowed={customAllowed} />
           ))}
         </div>
         {song.mainArtists.length === 0 && (

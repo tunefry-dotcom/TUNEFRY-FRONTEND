@@ -22,6 +22,7 @@ export default function TransferSong() {
   const navigate = useNavigate()
   const maxArtists = planMaxArtists(user?.plan)
   const customAllowed = canAccess(user, FEATURES.CUSTOM_LABEL)
+  const isDoubleOrLabel = user?.plan === 'double-artist' || user?.plan === 'label'
 
   // Simple text/select field values (mirrors the original DOM element ids)
   const [upcCode, setUpcCode] = useState('')
@@ -87,6 +88,7 @@ export default function TransferSong() {
     getProfile().then((p) => {
       const merged = { ...p, artist_name: p.artist_name || user?.artist_name || '' }
       setProfileData(merged)
+      if (customAllowed && p.custom_label_name) setSavedLabel(p.custom_label_name.trim())
       if (merged.artist_name || merged.spotify_url || merged.apple_music_url) {
         setMainArtists([{ name: merged.artist_name || '', spotify: merged.spotify_url || '', apple_music: merged.apple_music_url || '', instagram: '' }])
       }
@@ -426,7 +428,7 @@ export default function TransferSong() {
                 <div className="form-group col-span-2">
                   <label className="form-label">Artist Name <span className="req">*</span></label>
                   <input className="form-input" type="text" placeholder="Main artist name" value={artist.name}
-                    disabled={i === 0 && !!profileData?.artist_name}
+                    disabled={i === 0 && !!profileData?.artist_name && !isDoubleOrLabel}
                     onChange={(e) => updateMainArtist(i, 'name', e.target.value)} style={i === 0 && !profileData?.artist_name ? markStyle('mainArtist0') : undefined} />
                 </div>
                 <div className="form-group">
