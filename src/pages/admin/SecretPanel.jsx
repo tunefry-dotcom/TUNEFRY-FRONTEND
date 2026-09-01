@@ -620,7 +620,6 @@ function DetailModal({ sub, secret, onClose, onReviewed, onDeleted }) {
         body: JSON.stringify({ status: newStatus, admin_note: '' }),
       })
       if (!res.ok) { alert(`Failed: ${res.status}`); return }
-      openMail(sub.user_email, newStatus, sub)
       onReviewed(sub.id, newStatus)
       onClose()
     } catch (e) { alert('Network error.') }
