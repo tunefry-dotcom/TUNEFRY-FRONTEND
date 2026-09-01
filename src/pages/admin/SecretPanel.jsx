@@ -4,6 +4,15 @@ import { API_BASE as BASE } from '../../lib/config.js'
 const STORAGE_KEY = 'tunefry_admin_secret'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+// Pure reducer for the local optimistic update after an approve/decline PATCH.
+// Updates status in place — does NOT reorder the list (items must stay at their
+// original index; only their fade styling reacts to the new status).
+export function applyReviewedStatus(submissions, id, newStatus, reviewedAt = new Date().toISOString()) {
+  return submissions.map((s) =>
+    s.id === id ? { ...s, status: newStatus, reviewed_at: reviewedAt } : s
+  )
+}
+
 const PLAN_COLORS = {
   'free':          { bg: '#1a1a1a', text: '#9ca3af', border: '#374151' },
   'single-song':   { bg: '#052e16', text: '#4ade80', border: '#166534' },
@@ -840,11 +849,7 @@ function SubmissionsView({ secret, category, title, onSessionExpired }) {
   }, [fetchPage])
 
   const handleReviewed = (id, newStatus) => {
-    setSubmissions((prev) => {
-      const updated = prev.map((s) => s.id === id ? { ...s, status: newStatus, reviewed_at: new Date().toISOString() } : s)
-      // Sort: pending first, reviewed last
-      return [...updated.filter((s) => s.status === 'pending'), ...updated.filter((s) => s.status !== 'pending')]
-    })
+    setSubmissions((prev) => applyReviewedStatus(prev, id, newStatus))
   }
 
   const toggleSelect = (id) => {

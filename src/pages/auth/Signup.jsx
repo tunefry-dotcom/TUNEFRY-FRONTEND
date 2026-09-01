@@ -1,11 +1,15 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { signup as apiSignup } from '../../lib/auth'
 
 export default function Signup() {
+  const [searchParams] = useSearchParams()
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [form, setForm] = useState({ fullName: '', artistName: '', phone: '', email: '', password: '', confirmPassword: '' })
+  const [form, setForm] = useState({
+    fullName: '', artistName: '', phone: '', email: '', password: '', confirmPassword: '',
+    referralCode: searchParams.get('ref') || '',
+  })
   const [error, setError] = useState('')
   const [matchError, setMatchError] = useState('')
   const [success, setSuccess] = useState('')
@@ -29,7 +33,7 @@ export default function Signup() {
     if (form.password !== form.confirmPassword) { setMatchError('Passwords do not match.'); return }
     setLoading(true)
     try {
-      const data = await apiSignup(form.fullName.trim(), form.artistName.trim(), form.phone.trim(), form.email, form.password)
+      const data = await apiSignup(form.fullName.trim(), form.artistName.trim(), form.phone.trim(), form.email, form.password, form.referralCode.trim())
       setSuccess(data.message || 'Account created! Please check your email to confirm.')
     } catch (err) {
       setError(err.message)
@@ -102,6 +106,16 @@ export default function Signup() {
                   <svg className="input-icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.59a16 16 0 006.5 6.5l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
                   <input type="tel" className="form-input has-icon" placeholder="+91 98765 43210"
                     value={form.phone} onChange={set('phone')} required />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Referral Code <span style={{ opacity: 0.6, fontWeight: 400 }}>(optional)</span></label>
+                <div className="input-icon-wrap">
+                  <svg className="input-icon" viewBox="0 0 24 24"><path d="M20 8h-3.4a3.5 3.5 0 1 0-6.63-1.7L9 8"/><path d="M4 8h16v13H4z"/><path d="M12 8v13"/></svg>
+                  <input type="text" className="form-input has-icon" placeholder="Friend's referral code"
+                    value={form.referralCode} onChange={set('referralCode')}
+                    style={{ textTransform: 'uppercase' }} />
                 </div>
               </div>
 

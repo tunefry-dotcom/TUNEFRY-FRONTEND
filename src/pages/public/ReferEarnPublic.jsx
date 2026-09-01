@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { getMyReferrals } from '../../lib/referrals'
 
 function useScrollReveal() {
   useEffect(() => {
@@ -16,7 +18,7 @@ function useScrollReveal() {
 
 const REF_FAQS = [
   { q: 'Who can join the Refer & Earn program?', a: 'Any registered Tunefry artist can join. Simply log into your dashboard, go to the Refer & Earn section, and copy your unique referral link to get started.' },
-  { q: 'How and when do I get paid?', a: 'Earnings are credited to your Tunefry wallet within 7 working days of your referral\'s successful payment. You can withdraw to your bank account once your balance reaches ₹1,500.' },
+  { q: 'How and when do I get paid?', a: 'Your 10% commission is credited to your Tunefry wallet as soon as your referral\'s plan activates. You can withdraw to your bank account once your balance reaches ₹1,500.' },
   { q: 'Is there a limit on how many people I can refer?', a: 'No limit at all. You can refer as many artists as you like — the more you refer, the more you earn. There is no maximum cap on your earnings.' },
   { q: 'What counts as a valid referral?', a: 'A valid referral is a new user who signs up via your unique referral link and purchases any paid Tunefry plan. Free plan sign-ups do not count towards your commission.' },
 ]
@@ -25,12 +27,21 @@ const AVG_PLAN = 1439
 
 export default function ReferEarnPublic() {
   useScrollReveal()
+  const { user } = useAuth()
   const [refCount, setRefCount] = useState(10)
   const [copied, setCopied] = useState(false)
   const [faqOpen, setFaqOpen] = useState(null)
+  const [myCode, setMyCode] = useState(null)
   const inputRef = useRef(null)
 
-  const REFERRAL_URL = 'https://tunefry.com/register?ref=YOUR_CODE'
+  useEffect(() => {
+    if (!user) return
+    getMyReferrals().then((d) => setMyCode(d.referral_code)).catch(() => {})
+  }, [user])
+
+  const REFERRAL_URL = myCode
+    ? `https://tunefry.com/signup?ref=${myCode}`
+    : 'https://tunefry.com/signup?ref=YOUR_CODE'
   const monthly = Math.round(refCount * AVG_PLAN * 0.10)
   const annual  = monthly * 12
   const pct     = ((refCount - 1) / (100 - 1) * 100).toFixed(1) + '%'
@@ -83,12 +94,20 @@ export default function ReferEarnPublic() {
             <button className="ref-copy-btn" onClick={copyLink}>Copy</button>
             <button className="ref-share-btn" onClick={shareLink}>Share</button>
           </div>
-          <p style={{ fontSize: 11.5, color: 'var(--t3)', marginTop: 12, textAlign: 'center' }}>
-            Log in to get your unique referral link with your Artist ID.
-          </p>
-          <Link to="/login" className="btn-or" style={{ width: '100%', justifyContent: 'center', marginTop: 10, display: 'flex' }}>
-            Log in to Get Your Link →
-          </Link>
+          {myCode ? (
+            <p style={{ fontSize: 11.5, color: 'var(--t3)', marginTop: 12, textAlign: 'center' }}>
+              This is your real referral link — share it anywhere.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: 11.5, color: 'var(--t3)', marginTop: 12, textAlign: 'center' }}>
+                Log in to get your unique referral link with your Artist ID.
+              </p>
+              <Link to="/login" className="btn-or" style={{ width: '100%', justifyContent: 'center', marginTop: 10, display: 'flex' }}>
+                Log in to Get Your Link →
+              </Link>
+            </>
+          )}
         </div>
       </section>
 

@@ -50,12 +50,15 @@ export async function login(email, password) {
   return data
 }
 
-export async function signup(fullName, artistName, phone, email, password) {
+export async function signup(fullName, artistName, phone, email, password, referralCode) {
   const res = await fetch(`${BASE}/auth/signup`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ full_name: fullName, artist_name: artistName, phone, email, password }),
+    body: JSON.stringify({
+      full_name: fullName, artist_name: artistName, phone, email, password,
+      referral_code: referralCode || null,
+    }),
   })
   const data = await res.json()
   if (!res.ok) {
