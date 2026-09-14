@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 
 import { API_BASE as BASE } from '../lib/config.js'
 import { getEarnings } from '../lib/earnings.js'
+import { isPitchEligible } from '../lib/pitchEligibility.js'
 
 const fmtNum = (n) => (n ?? 0).toLocaleString('en-IN')
 const UGC_GROUPS = new Set(['Facebook', 'TikTok'])
@@ -61,11 +62,9 @@ export default function Overview() {
         const uid = user.id || ''
         const pitched = JSON.parse(localStorage.getItem(`tf_pitched_${uid}`) || '[]')
 
-        // Pitch section: approved song submissions not yet pitched
+        // Pitch section: approved new_song/new_album submissions in their 30-day-old-to-release-date window, not yet pitched
         const eligible = submissions.filter((s) =>
-          s.status === 'approved' &&
-          ['new_song','transfer_song'].includes(s.submission_type) &&
-          !pitched.includes(s.id)
+          isPitchEligible(s) && !pitched.includes(s.id)
         ).slice(0, 3)
         setPitchSongs(eligible)
 

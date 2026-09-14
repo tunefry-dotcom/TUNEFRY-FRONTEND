@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 import { API_BASE as BASE } from '../lib/config.js'
+import { isPitchEligible } from '../lib/pitchEligibility.js'
 
 export default function PitchSong() {
   const { user } = useAuth()
@@ -18,9 +19,7 @@ export default function PitchSong() {
       .then((r) => r.ok ? r.json() : { submissions: [] })
       .then(({ submissions = [] }) => {
         const eligible = submissions.filter((s) =>
-          s.status === 'approved' &&
-          ['new_song', 'transfer_song'].includes(s.submission_type) &&
-          !pitched.includes(s.id)
+          isPitchEligible(s) && !pitched.includes(s.id)
         )
         setSongs(eligible)
         // Pre-select if navigated from Overview "Apply Now"
