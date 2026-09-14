@@ -115,12 +115,12 @@ export const PLANS = [
   },
   {
     id: 'double-artist', name: 'Double Artist', tag: 'For duos & collaborators',
-    price: '2,999', per: 'per year · 2 artists',
+    price: '2,999', per: 'per year · unlimited artists',
     royalty: { cls: 'gr', text: '✓ 100% royalties' },
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
     feats: [
       { ck: 'green', text: 'Custom label name' },
-      { ck: 'green', text: 'Unlimited releases (2 artists)' },
+      { ck: 'green', text: 'Unlimited releases, unlimited artists' },
       { ck: 'green', text: 'Singles & album releases' },
       { ck: 'green', text: 'Catalogue transfer & migration' },
       { ck: 'green', text: 'Collab with multiple artists' },

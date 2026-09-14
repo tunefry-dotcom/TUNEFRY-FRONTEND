@@ -132,7 +132,7 @@ export default function CurrentPlan() {
             <tr>
               <td>Artist Profiles</td>
               <td className="current-col-data">1 Artist</td>
-              <td className="next-col-data">2 Artists</td>
+              <td className="next-col-data">Unlimited Artists</td>
             </tr>
             <tr>
               <td>Annual Price</td>

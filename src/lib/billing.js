@@ -29,12 +29,13 @@ export const PLAN_LABELS = {
 // Max MAIN artists allowed per release, keyed by the hyphenated plan ids that
 // /billing/me returns (see backend PLAN_SPECS.max_artists). Single source of
 // truth — the upload forms import this instead of each keeping their own copy.
+// Infinity == unlimited (mirrors backend max_artists=None).
 export const PLAN_MAX_ARTISTS = {
   free: 1,
   'single-song': 1,
   starter: 1,
   'single-artist': 1,
-  'double-artist': 2,
+  'double-artist': Infinity,
   label: 5,
 }
 

@@ -8,7 +8,7 @@ const PLANS = {
   'single-song'   : { name:'Single Song',   sub:'one-time · per song',     price:299, royalty:'85%',  labelField:false, artistCounter:false },
   'starter'       : { name:'Starter',       sub:'per year · unlimited releases', price:999, royalty:'90%',  labelField:false, artistCounter:false },
   'single-artist' : { name:'Single Artist', sub:'per year · unlimited releases', price:1599, royalty:'100%', labelField:false, artistCounter:false },
-  'double-artist' : { name:'Double Artist', sub:'per year · 2 artists',    price:2999, royalty:'100%', labelField:true, artistCounter:false },
+  'double-artist' : { name:'Double Artist', sub:'per year · unlimited artists', price:2999, royalty:'100%', labelField:true, artistCounter:false },
   'label'         : { name:'Label Plan',    sub:'per year · min. 5 artists', price:6999, royalty:'100%', labelField:true, artistCounter:true }
 };
 
