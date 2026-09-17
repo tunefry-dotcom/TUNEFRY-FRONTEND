@@ -399,6 +399,7 @@ export default function NewAlbum() {
               songIndex={idx}
               isNewArtist={isNewArtist}
               customAllowed={customAllowed}
+              isDoubleOrLabel={isDoubleOrLabel}
             />
           ))}
         </div>
@@ -494,7 +495,7 @@ function ArtistGroup({ song, type, artist, num, updateArtist, removeArtist, lock
   )
 }
 
-function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, addArtist, removeArtist, updateArtist, handleSongAudio, maxArtists, profileData, songIndex, isNewArtist, customAllowed }) {
+function SongCard({ song, num, removeDisabled, onToggle, onRemove, updateSong, addArtist, removeArtist, updateArtist, handleSongAudio, maxArtists, profileData, songIndex, isNewArtist, customAllowed, isDoubleOrLabel }) {
   const audioRef = useRef(null)
   const ytCid = ynClass('yn-btn', song.ytCid)
   const ytBeat = ynClass('yn-btn', song.ytBeat)
