@@ -191,6 +191,27 @@ export default function Withdrawal() {
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No withdrawal requests yet.</div>
         )}
         {history.map((t) => {
+          if (t.type === 'adjustment') {
+            const credit = Number(t.amount) >= 0
+            const color = credit ? '#22C55E' : '#F87171'
+            return (
+              <div key={`adj-${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: '0.5px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: credit ? 'rgba(34,197,94,0.12)' : 'rgba(248,113,113,0.12)', border: `0.5px solid ${credit ? 'rgba(34,197,94,0.2)' : 'rgba(248,113,113,0.2)'}`, color }}>
+                  <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, stroke: 'currentColor', fill: 'none', strokeWidth: 2 }}>
+                    {credit ? <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></> : <line x1="5" y1="12" x2="19" y2="12"/>}
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{credit ? 'Balance Credit' : 'Balance Adjustment'}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{t.comment || (t.requested_at ? new Date(t.requested_at).toLocaleDateString('en-IN') : '')}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color }}>{credit ? '+' : '−'}₹{fmtRs(Math.abs(Number(t.amount) || 0))}</div>
+                  <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.15)', color: 'var(--text-secondary)' }}>Adjustment</span>
+                </div>
+              </div>
+            )
+          }
           const paid = t.status === 'paid'
           return (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: '0.5px solid rgba(255,255,255,0.05)' }}>

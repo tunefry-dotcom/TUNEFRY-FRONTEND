@@ -1775,6 +1775,91 @@ function EarningsView({ secret, onSessionExpired }) {
   const [subs, setSubs] = useState([])
   const [modalError, setModalError] = useState('')
   const [modalBusy, setModalBusy] = useState(false)
+  const [adjDirection, setAdjDirection] = useState('add')
+  const [adjAmount, setAdjAmount] = useState('')
+  const [adjComment, setAdjComment] = useState('')
+  const [adjBusy, setAdjBusy] = useState(false)
+  const [adjDeleteBusyId, setAdjDeleteBusyId] = useState(null)
+
+  // Centrally-set USD -> INR rate used by every Excel import (set once, applies
+  // to all artists — never re-entered per upload).
+  const [fxRate, setFxRate] = useState(null)       // number | null
+  const [fxRateLoading, setFxRateLoading] = useState(true)
+  const [fxRateEditing, setFxRateEditing] = useState(false)
+  const [fxRateDraft, setFxRateDraft] = useState('')
+  const [fxRateSaving, setFxRateSaving] = useState(false)
+  const [fxRateMsg, setFxRateMsg] = useState('')
+
+  const [uploading, setUploading] = useState(false)
+  const [uploadMsg, setUploadMsg] = useState('')
+
+  useEffect(() => {
+    (async () => {
+      setFxRateLoading(true)
+      try {
+        const r = await fetch(`${BASE}/admin/fx-rate`, { headers: H })
+        if (r.status === 403) { onSessionExpired(); return }
+        const d = await r.json()
+        if (r.ok) setFxRate(d.usd_to_inr)
+      } catch { /* ignore — editor still lets admin set it */ }
+      finally { setFxRateLoading(false) }
+    })()
+  }, [])
+
+  const saveFxRate = async () => {
+    const val = Number(fxRateDraft)
+    if (!val || val <= 0) { setFxRateMsg('Enter a valid positive rate'); return }
+    setFxRateSaving(true); setFxRateMsg('')
+    try {
+      const r = await fetch(`${BASE}/admin/fx-rate`, {
+        method: 'PUT', headers: H, body: JSON.stringify({ usd_to_inr: String(val) }),
+      })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) { setFxRateMsg(d.detail || 'Failed to save rate'); return }
+      setFxRate(d.usd_to_inr)
+      setFxRateEditing(false)
+    } catch { setFxRateMsg('Network error') }
+    finally { setFxRateSaving(false) }
+  }
+
+  const handleExcelUpload = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const email = artistData?.artist?.email
+    if (!email) return
+    setUploading(true); setUploadMsg(''); setError('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('email', email)
+      const r = await fetch(`${BASE}/admin/song-stats/import`, {
+        method: 'POST',
+        headers: { 'X-Admin-Secret': secret },
+        body: fd,
+      })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) {
+        if (d?.detail?.error === 'usd_to_inr_not_set') {
+          setUploadMsg('Set the USD→INR rate above first.')
+        } else {
+          setUploadMsg(typeof d.detail === 'string' ? d.detail : 'Import failed')
+        }
+        return
+      }
+      const imp = d.imported || {}
+      setUploadMsg(
+        `Imported: ${imp.songs_new || 0} new song(s), ${imp.songs_updated || 0} updated, ` +
+        `${imp.rows_written || 0} row(s), ${(imp.total_streams || 0).toLocaleString('en-IN')} streams, ` +
+        `${fmtRs(imp.total_revenue_inr)} added.` +
+        (d.warnings?.length ? ` ⚠ ${d.warnings.join(' ')}` : '')
+      )
+      await pickCandidate(email)
+    } catch { setUploadMsg('Network error') }
+    finally { setUploading(false) }
+  }
 
   const doSearch = async (e) => {
     e.preventDefault()
@@ -1823,6 +1908,7 @@ function EarningsView({ secret, onSessionExpired }) {
       const d = await r.json()
       if (!r.ok) { setError(d.detail || 'Update failed'); return }
       setArtistData(prev => ({
+        ...prev,
         artist: { ...prev.artist, ...d.balance },
         rows: prev.rows.map(row => row.id === rowId ? { ...row, ...d.row } : row),
       }))
@@ -1839,6 +1925,7 @@ function EarningsView({ secret, onSessionExpired }) {
       const d = await r.json()
       if (!r.ok) { setError(d.detail || 'Delete failed'); return }
       setArtistData(prev => ({
+        ...prev,
         artist: { ...prev.artist, ...d.balance },
         rows: prev.rows.filter(row => row.id !== rowId),
       }))
@@ -1895,6 +1982,7 @@ function EarningsView({ secret, onSessionExpired }) {
       const d = await r.json()
       if (!r.ok) { setModalError(d.detail || 'Failed'); return }
       setArtistData(prev => ({
+        ...prev,
         artist: { ...prev.artist, ...d.balance },
         rows: [
           ...(prev?.rows || []).filter(row => !d.rows.find(nr => nr.id === row.id)),
@@ -1905,6 +1993,51 @@ function EarningsView({ secret, onSessionExpired }) {
       setModal(null)
     } catch { setModalError('Network error') }
     finally { setModalBusy(false) }
+  }
+
+  const submitAdjustment = async () => {
+    const amt = Number(adjAmount)
+    if (!amt || amt <= 0) { setError('Enter a valid amount'); return }
+    if (!adjComment.trim()) { setError('Comment is required'); return }
+    setAdjBusy(true); setError('')
+    try {
+      const signed = adjDirection === 'add' ? amt : -amt
+      const r = await fetch(`${BASE}/admin/balance-adjustments`, {
+        method: 'POST', headers: H,
+        body: JSON.stringify({
+          user_email: artistData.artist.email,
+          amount: String(signed),
+          comment: adjComment.trim(),
+        }),
+      })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) { setError(d.detail || 'Adjustment failed'); return }
+      setArtistData(prev => ({
+        ...prev,
+        artist: { ...prev.artist, ...d.balance },
+        adjustments: [d.adjustment, ...(prev.adjustments || [])],
+      }))
+      setAdjAmount(''); setAdjComment('')
+    } catch { setError('Network error') }
+    finally { setAdjBusy(false) }
+  }
+
+  const deleteAdjustment = async (id) => {
+    if (!window.confirm("Delete this adjustment? The artist's balance will be recalculated.")) return
+    setAdjDeleteBusyId(id)
+    try {
+      const r = await fetch(`${BASE}/admin/balance-adjustments/${id}`, { method: 'DELETE', headers: H })
+      if (r.status === 403) { onSessionExpired(); return }
+      const d = await r.json()
+      if (!r.ok) { setError(d.detail || 'Delete failed'); return }
+      setArtistData(prev => ({
+        ...prev,
+        artist: { ...prev.artist, ...d.balance },
+        adjustments: (prev.adjustments || []).filter(a => a.id !== id),
+      }))
+    } catch { setError('Delete failed') }
+    finally { setAdjDeleteBusyId(null) }
   }
 
   // Compute grouped view from flat rows on each render (fast enough for admin)
@@ -1944,6 +2077,42 @@ function EarningsView({ secret, onSessionExpired }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
+        {/* Central USD -> INR rate — set once here, applies to every artist's Excel import */}
+        <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 10, padding: '.9rem 1.1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ color: '#4b5563', fontSize: '.7rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>USD → INR rate</div>
+          {fxRateLoading ? (
+            <div style={{ color: '#6b7280', fontSize: '.85rem' }}>Loading…</div>
+          ) : fxRateEditing ? (
+            <>
+              <input autoFocus type="number" min="0" step="0.01" value={fxRateDraft}
+                onChange={e => setFxRateDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveFxRate(); if (e.key === 'Escape') setFxRateEditing(false) }}
+                placeholder="e.g. 83.50"
+                style={{ width: 110, background: '#1a1a1a', border: '1px solid #ff6b2b', borderRadius: 6, padding: '.35rem .6rem', color: '#f0f0f0', fontSize: '.85rem', outline: 'none' }} />
+              <button onClick={saveFxRate} disabled={fxRateSaving}
+                style={{ padding: '.35rem .8rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg,#ff6b2b,#ff4500)', color: '#fff', fontWeight: 600, fontSize: '.8rem', cursor: fxRateSaving ? 'wait' : 'pointer' }}>
+                {fxRateSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => { setFxRateEditing(false); setFxRateMsg('') }}
+                style={{ padding: '.35rem .8rem', borderRadius: 6, border: '1px solid #2a2a2a', background: 'transparent', color: '#9ca3af', fontSize: '.8rem', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ color: fxRate ? '#4ade80' : '#f87171', fontSize: '.95rem', fontWeight: 700, fontFamily: 'monospace' }}>
+                {fxRate ? `1 USD = ₹${fxRate}` : 'Not set'}
+              </div>
+              <button onClick={() => { setFxRateDraft(fxRate ? String(fxRate) : ''); setFxRateEditing(true); setFxRateMsg('') }}
+                style={{ padding: '.35rem .8rem', borderRadius: 6, border: '1px solid rgba(255,107,43,.4)', background: 'rgba(255,107,43,.1)', color: '#ff8a4c', fontSize: '.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                {fxRate ? 'Edit' : 'Set rate'}
+              </button>
+            </>
+          )}
+          {fxRateMsg && <div style={{ color: '#f87171', fontSize: '.8rem' }}>{fxRateMsg}</div>}
+          <div style={{ color: '#4b5563', fontSize: '.75rem', marginLeft: 'auto' }}>Applies automatically to every artist's Excel import below — set once, no need to re-enter it.</div>
+        </div>
+
         {/* Search */}
         <form onSubmit={doSearch} style={{ display: 'flex', gap: 8, marginBottom: '1.25rem' }}>
           <input
@@ -1997,6 +2166,66 @@ function EarningsView({ secret, onSessionExpired }) {
               ))}
             </div>
 
+            {/* Adjust Balance */}
+            <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: '1rem 1.1rem', marginBottom: '1.25rem' }}>
+              <div style={{ color: '#f0f0f0', fontSize: '.92rem', fontWeight: 700, marginBottom: '.75rem' }}>Adjust Balance</div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: '.6rem' }}>
+                {[
+                  { key: 'add', label: 'Add (Credit)', color: '#4ade80' },
+                  { key: 'subtract', label: 'Subtract (Debit)', color: '#f87171' },
+                ].map(({ key, label, color }) => (
+                  <button key={key} onClick={() => setAdjDirection(key)}
+                    style={{
+                      flex: 1, padding: '.5rem .75rem', borderRadius: 8,
+                      border: `1px solid ${adjDirection === key ? color : '#2a2a2a'}`,
+                      background: adjDirection === key ? `${color}1a` : 'transparent',
+                      color: adjDirection === key ? color : '#9ca3af',
+                      fontSize: '.83rem', fontWeight: 600, cursor: 'pointer',
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: '.6rem', flexWrap: 'wrap' }}>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={adjAmount} onChange={e => setAdjAmount(e.target.value)}
+                  placeholder="Amount (₹)"
+                  style={{ width: 160, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '.55rem .75rem', color: '#f0f0f0', fontSize: '.85rem', outline: 'none' }}
+                />
+                <input
+                  value={adjComment} onChange={e => setAdjComment(e.target.value)}
+                  placeholder="Comment (required, shown to artist)"
+                  style={{ flex: 1, minWidth: 200, background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '.55rem .75rem', color: '#f0f0f0', fontSize: '.85rem', outline: 'none' }}
+                />
+                <button onClick={submitAdjustment} disabled={adjBusy}
+                  style={{ padding: '.55rem 1.1rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#ff6b2b,#ff4500)', color: '#fff', fontWeight: 600, fontSize: '.85rem', cursor: 'pointer', opacity: adjBusy ? 0.6 : 1 }}>
+                  {adjBusy ? '…' : 'Apply'}
+                </button>
+              </div>
+
+              {(artistData.adjustments || []).length > 0 && (
+                <div style={{ borderTop: '1px solid #1a1a1a', marginTop: '.75rem', paddingTop: '.75rem' }}>
+                  {artistData.adjustments.map(a => {
+                    const credit = Number(a.amount) >= 0
+                    return (
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '.4rem 0' }}>
+                        <div style={{ color: credit ? '#4ade80' : '#f87171', fontWeight: 700, fontSize: '.85rem', fontFamily: 'monospace', minWidth: 100 }}>
+                          {credit ? '+' : '−'}{fmtRs(Math.abs(Number(a.amount) || 0))}
+                        </div>
+                        <div style={{ flex: 1, color: '#9ca3af', fontSize: '.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.comment}</div>
+                        <div style={{ color: '#4b5563', fontSize: '.72rem', flexShrink: 0 }}>{a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN') : ''}</div>
+                        <button onClick={() => deleteAdjustment(a.id)} disabled={adjDeleteBusyId === a.id}
+                          style={{ padding: '.25rem .6rem', borderRadius: 6, border: '1px solid rgba(248,113,113,.3)', background: 'rgba(248,113,113,.08)', color: '#f87171', fontSize: '.72rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0, opacity: adjDeleteBusyId === a.id ? 0.5 : 1 }}>
+                          {adjDeleteBusyId === a.id ? '…' : 'Delete'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Warning */}
             <div style={{ background: 'rgba(234,179,8,.07)', border: '1px solid rgba(234,179,8,.22)', borderRadius: 8, padding: '.6rem 1rem', marginBottom: '1rem', color: '#fbbf24', fontSize: '.8rem' }}>
               ⚠ Rows for months covered by the next royalty ingestion will be overwritten when that script runs.
@@ -2009,11 +2238,25 @@ function EarningsView({ secret, onSessionExpired }) {
                   ? 'No stats yet — add the first entry below.'
                   : `${artistData.rows.length} row(s) across ${grouped.length} song(s)`}
               </div>
-              <button onClick={() => openModal()}
-                style={{ padding: '.45rem .95rem', borderRadius: 8, border: '1px solid rgba(255,107,43,.4)', background: 'rgba(255,107,43,.1)', color: '#ff8a4c', fontSize: '.83rem', fontWeight: 600, cursor: 'pointer' }}>
-                + Add Entry
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <label
+                  style={{ padding: '.45rem .95rem', borderRadius: 8, border: '1px solid #2a2a2a', background: 'transparent', color: uploading ? '#555' : '#9ca3af', fontSize: '.83rem', fontWeight: 600, cursor: uploading ? 'wait' : 'pointer' }}>
+                  {uploading ? 'Uploading…' : 'Upload Excel Report'}
+                  <input type="file" accept=".xlsx" disabled={uploading} style={{ display: 'none' }} onChange={handleExcelUpload} />
+                </label>
+                <button onClick={() => openModal()}
+                  style={{ padding: '.45rem .95rem', borderRadius: 8, border: '1px solid rgba(255,107,43,.4)', background: 'rgba(255,107,43,.1)', color: '#ff8a4c', fontSize: '.83rem', fontWeight: 600, cursor: 'pointer' }}>
+                  + Add Entry
+                </button>
+              </div>
             </div>
+
+            {/* Excel import result */}
+            {uploadMsg && (
+              <div style={{ background: uploadMsg.startsWith('Imported') ? 'rgba(74,222,128,.07)' : '#2d0a0a', border: `1px solid ${uploadMsg.startsWith('Imported') ? 'rgba(74,222,128,.22)' : '#7f1d1d'}`, borderRadius: 8, padding: '.6rem 1rem', marginBottom: '1rem', color: uploadMsg.startsWith('Imported') ? '#4ade80' : '#f87171', fontSize: '.8rem' }}>
+                {uploadMsg}
+              </div>
+            )}
 
             {/* Grouped tree */}
             {grouped.map(song => (

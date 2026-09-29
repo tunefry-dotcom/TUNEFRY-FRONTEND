@@ -82,7 +82,6 @@ export default function TransferAlbum() {
   const [profileData, setProfileData] = useState(null);
 
   const [upcCode, setUpcCode] = useState('');
-  const [albumIsrc, setAlbumIsrc] = useState('');
   const [albumName, setAlbumName] = useState('');
   const [originalReleaseDate, setOriginalReleaseDate] = useState('');
   const [goLiveDate, setGoLiveDate] = useState('');
@@ -103,11 +102,9 @@ export default function TransferAlbum() {
   const [toastVisible, setToastVisible] = useState(false);
 
   const upcRef = useRef(null);
-  const isrcRef = useRef(null);
   const nameRef = useRef(null);
 
   const [upcHighlight, setUpcHighlight] = useState(false);
-  const [isrcHighlight, setIsrcHighlight] = useState(false);
   const [nameHighlight, setNameHighlight] = useState(false);
   const [termsHighlight, setTermsHighlight] = useState(false);
 
@@ -238,11 +235,6 @@ export default function TransferAlbum() {
       setTimeout(() => setUpcHighlight(false), 2200);
       if (!bad) { upcRef.current && upcRef.current.focus(); bad = true; }
     }
-    if (!albumIsrc.trim()) {
-      setIsrcHighlight(true);
-      setTimeout(() => setIsrcHighlight(false), 2200);
-      if (!bad) { isrcRef.current && isrcRef.current.focus(); bad = true; }
-    }
     if (!albumName.trim()) {
       setNameHighlight(true);
       setTimeout(() => setNameHighlight(false), 2200);
@@ -306,7 +298,6 @@ export default function TransferAlbum() {
 
     const fd = new FormData();
     fd.append('upc_code', upcCode.trim());
-    fd.append('isrc_code', albumIsrc.trim());
     fd.append('album_name', albumName.trim());
     fd.append('original_release_date', originalReleaseDate);
     fd.append('go_live_date', goLiveDate);
@@ -856,24 +847,6 @@ export default function TransferAlbum() {
               value={upcCode}
               onChange={(e) => setUpcCode(e.target.value)}
               style={upcHighlight ? highlightStyle : undefined}
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">
-              ISRC Code <span className="req">*</span>
-            </label>
-            <input
-              type="text"
-              className="form-input"
-              id="albumIsrc"
-              ref={isrcRef}
-              name="isrc"
-              placeholder="e.g. USABC1234567"
-              maxLength="12"
-              required
-              value={albumIsrc}
-              onChange={(e) => setAlbumIsrc(e.target.value)}
-              style={isrcHighlight ? highlightStyle : undefined}
             />
           </div>
           <div className="form-group">
