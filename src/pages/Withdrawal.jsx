@@ -213,6 +213,9 @@ export default function Withdrawal() {
             )
           }
           const paid = t.status === 'paid'
+          const declined = t.status === 'declined'
+          const statusColor = paid ? '#22C55E' : declined ? '#F87171' : '#EAB308'
+          const statusLabel = paid ? 'Paid' : declined ? 'Declined' : 'Pending'
           return (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: '0.5px solid rgba(255,255,255,0.05)' }}>
               <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.method === 'bank' ? 'rgba(59,130,246,0.12)' : 'rgba(242,101,34,0.12)', border: `0.5px solid ${t.method === 'bank' ? 'rgba(59,130,246,0.2)' : 'rgba(242,101,34,0.2)'}`, color: t.method === 'bank' ? '#3B82F6' : 'var(--accent)' }}>
@@ -222,11 +225,14 @@ export default function Withdrawal() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600 }}>{t.method === 'bank' ? 'Bank Transfer' : 'UPI'} withdrawal</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>Requested {t.requested_at ? new Date(t.requested_at).toLocaleDateString('en-IN') : ''}{paid && t.processed_at ? ` · Paid ${new Date(t.processed_at).toLocaleDateString('en-IN')}` : ''}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>Requested {t.requested_at ? new Date(t.requested_at).toLocaleDateString('en-IN') : ''}{(paid || declined) && t.processed_at ? ` · ${statusLabel} ${new Date(t.processed_at).toLocaleDateString('en-IN')}` : ''}</div>
+                {t.comment && (
+                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, fontStyle: 'italic' }}>"{t.comment}"</div>
+                )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: paid ? '#22C55E' : 'var(--text-primary)' }}>₹{fmtRs(t.amount)}</div>
-                <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', background: paid ? 'rgba(34,197,94,0.1)' : 'rgba(234,179,8,0.1)', border: `0.5px solid ${paid ? 'rgba(34,197,94,0.25)' : 'rgba(234,179,8,0.25)'}`, color: paid ? '#22C55E' : '#EAB308' }}>{paid ? 'Paid' : 'Pending'}</span>
+                <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', background: `rgba(${paid ? '34,197,94' : declined ? '248,113,113' : '234,179,8'},0.1)`, border: `0.5px solid rgba(${paid ? '34,197,94' : declined ? '248,113,113' : '234,179,8'},0.25)`, color: statusColor }}>{statusLabel}</span>
               </div>
             </div>
           )

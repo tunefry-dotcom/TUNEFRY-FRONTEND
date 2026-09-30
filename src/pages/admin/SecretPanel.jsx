@@ -2480,6 +2480,7 @@ function WithdrawalRequestsView({ secret, onSessionExpired }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState(null)
+  const [noteById, setNoteById] = useState({})
 
   const fmtRs = (n) => `₹${(Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -2502,21 +2503,27 @@ function WithdrawalRequestsView({ secret, onSessionExpired }) {
 
   useEffect(() => { load() }, [load])
 
-  const markPaid = async (id) => {
+  const review = async (id, newStatus) => {
+    const note = (noteById[id] || '').trim()
+    if (!note) { alert('A comment is required — it will be shown to the artist.'); return }
     setBusyId(id)
     try {
       const res = await fetch(`${BASE}/admin/withdrawals/${id}`, {
         method: 'PATCH',
         headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'paid' }),
+        body: JSON.stringify({ status: newStatus, admin_note: note }),
       })
       if (res.status === 403) return onSessionExpired()
       if (!res.ok) throw new Error('Update failed')
       const data = await res.json()
       setRequests((rs) => rs.map((r) => (r.id === id ? data.request : r)))
+      setNoteById((n) => { const next = { ...n }; delete next[id]; return next })
       setTotalPending((p) => Math.max(0, p - Number(requests.find((r) => r.id === id)?.amount || 0)))
     } catch (e) { alert(e.message) } finally { setBusyId(null) }
   }
+
+  const markPaid = (id) => review(id, 'paid')
+  const decline = (id) => review(id, 'declined')
 
   const del = async (id) => {
     if (!window.confirm('Delete this withdrawal request? If it is not paid, the amount is credited back to the artist.')) return
@@ -2548,22 +2555,30 @@ function WithdrawalRequestsView({ secret, onSessionExpired }) {
       <div style={{ display: 'grid', gap: 14 }}>
         {requests.map((r) => {
           const paid = r.status === 'paid'
+          const declined = r.status === 'declined'
+          const reviewed = paid || declined
+          const badgeColor = paid ? '#22C55E' : declined ? '#f87171' : '#EAB308'
+          const badgeLabel = paid ? 'Paid' : declined ? 'Declined' : 'Pending'
           const s = r.snapshot || {}
           const pd = r.payout_details || {}
+          const note = noteById[r.id] || ''
           return (
-            <div key={r.id} style={{ background: paid ? '#0c0c0c' : '#111', border: `1px solid ${paid ? '#1a1a1a' : '#242424'}`, borderRadius: 12, padding: '1.1rem 1.25rem', opacity: paid ? 0.55 : 1, transition: 'opacity .2s' }}>
+            <div key={r.id} style={{ background: reviewed ? '#0c0c0c' : '#111', border: `1px solid ${reviewed ? '#1a1a1a' : '#242424'}`, borderRadius: 12, padding: '1.1rem 1.25rem', opacity: reviewed ? 0.55 : 1, transition: 'opacity .2s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 240 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 700, color: paid ? '#22C55E' : '#ff8a4c' }}>{fmtRs(r.amount)}</span>
-                    <span style={{ padding: '2px 9px', borderRadius: 100, fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', background: paid ? 'rgba(34,197,94,.12)' : 'rgba(234,179,8,.12)', color: paid ? '#22C55E' : '#EAB308', border: `1px solid ${paid ? 'rgba(34,197,94,.3)' : 'rgba(234,179,8,.3)'}` }}>{paid ? 'Paid' : 'Pending'}</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 700, color: reviewed ? badgeColor : '#ff8a4c' }}>{fmtRs(r.amount)}</span>
+                    <span style={{ padding: '2px 9px', borderRadius: 100, fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', background: `rgba(${paid ? '34,197,94' : declined ? '248,113,113' : '234,179,8'},.12)`, color: badgeColor, border: `1px solid rgba(${paid ? '34,197,94' : declined ? '248,113,113' : '234,179,8'},.3)` }}>{badgeLabel}</span>
                   </div>
                   <div style={{ color: '#e5e7eb', fontSize: '.9rem', fontWeight: 600 }}>{s.full_name || s.artist_name || r.user_email}</div>
                   <div style={{ color: '#6b7280', fontSize: '.78rem', marginTop: 2 }}>{r.user_email}</div>
                   <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 6 }}>
                     Requested {r.requested_at ? new Date(r.requested_at).toLocaleString('en-IN') : '—'}
-                    {paid && r.processed_at ? ` · Paid ${new Date(r.processed_at).toLocaleString('en-IN')}` : ''}
+                    {reviewed && r.processed_at ? ` · ${paid ? 'Paid' : 'Declined'} ${new Date(r.processed_at).toLocaleString('en-IN')}` : ''}
                   </div>
+                  {reviewed && r.admin_note && (
+                    <div style={{ color: '#9ca3af', fontSize: '.75rem', marginTop: 6, fontStyle: 'italic' }}>"{r.admin_note}"</div>
+                  )}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 240, fontSize: '.8rem', color: '#9ca3af', lineHeight: 1.7 }}>
@@ -2584,11 +2599,25 @@ function WithdrawalRequestsView({ secret, onSessionExpired }) {
                       </>}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 120 }}>
-                  {!paid && (
-                    <button disabled={busyId === r.id} onClick={() => markPaid(r.id)}
-                      style={{ padding: '.5rem .9rem', borderRadius: 8, border: '1px solid rgba(34,197,94,.35)', background: 'rgba(34,197,94,.12)', color: '#22C55E', fontSize: '.82rem', fontWeight: 600, cursor: busyId === r.id ? 'wait' : 'pointer' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
+                  {!reviewed && (
+                    <input
+                      value={note}
+                      onChange={(e) => setNoteById((n) => ({ ...n, [r.id]: e.target.value }))}
+                      placeholder="Comment (required, shown to artist)"
+                      style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '.55rem .75rem', color: '#f0f0f0', fontSize: '.82rem', outline: 'none' }}
+                    />
+                  )}
+                  {!reviewed && (
+                    <button disabled={busyId === r.id || !note.trim()} onClick={() => markPaid(r.id)}
+                      style={{ padding: '.5rem .9rem', borderRadius: 8, border: '1px solid rgba(34,197,94,.35)', background: 'rgba(34,197,94,.12)', color: '#22C55E', fontSize: '.82rem', fontWeight: 600, cursor: busyId === r.id ? 'wait' : 'pointer', opacity: note.trim() ? 1 : 0.5 }}>
                       Mark Paid
+                    </button>
+                  )}
+                  {!reviewed && (
+                    <button disabled={busyId === r.id || !note.trim()} onClick={() => decline(r.id)}
+                      style={{ padding: '.5rem .9rem', borderRadius: 8, border: '1px solid rgba(248,113,113,.35)', background: 'rgba(248,113,113,.08)', color: '#f87171', fontSize: '.82rem', fontWeight: 600, cursor: busyId === r.id ? 'wait' : 'pointer', opacity: note.trim() ? 1 : 0.5 }}>
+                      Decline
                     </button>
                   )}
                   <button disabled={busyId === r.id} onClick={() => del(r.id)}

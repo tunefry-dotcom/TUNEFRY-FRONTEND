@@ -22,7 +22,9 @@ export function getBalance() {
   return getJSON('/earnings/balance')
 }
 
-// [{ id, amount, status, method, requested_at, processed_at }]
+// [{ id, amount, status, method, requested_at, processed_at, comment }]
+// status is 'pending' | 'paid' | 'declined'; comment is the admin's note
+// (required on paid/declined), null while still pending.
 export function getWithdrawalHistory() {
   return getJSON('/withdrawals/me')
 }
