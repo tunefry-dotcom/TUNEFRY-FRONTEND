@@ -1,114 +1,117 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import {
+  getCategories, getCreditStatus, uploadBlogImage, submitArticle, buyCreditPack,
+} from '../../lib/blog'
 import '../../styles/ai-blog.css'
 
-function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1) }
+const FALLBACK_CATEGORIES = [
+  { id: 'artist_journey', label: 'Artist Journey' },
+  { id: 'song_release', label: 'Song Release' },
+  { id: 'informative', label: 'Informative' },
+  { id: 'success_story', label: 'Success Story' },
+]
 
-function generatePlaceholderArticle(topic, tone, length, keywords) {
-  var intro = '# ' + topic + '\n\n'
-  var toneNote = tone === 'professional' ? 'In the music industry today,' : tone === 'casual' ? 'Let\'s talk about something every artist needs to know —' : tone === 'inspirational' ? 'Every great artist starts with a dream.' : 'Understanding the music industry is essential for every creator.'
-
-  intro += toneNote + ' ' + topic.toLowerCase() + ' is one of the most important skills you can develop as an independent artist.\n\n'
-  intro += 'Whether you\'re just starting out or already have releases on major platforms, knowing how to navigate this aspect of the music business can make a significant difference in your career.\n\n'
-
-  var body = '## Why This Matters\n\nThe music industry has evolved dramatically over the past decade. With streaming platforms now dominating how music is consumed, independent artists have more opportunities than ever — but also more competition.\n\n'
-  body += '## Getting Started\n\nHere are the key steps every artist should follow:\n\n'
-  body += '**1. Build Your Foundation**\nBefore anything else, ensure your music is professionally produced and your artist profile is complete on all major platforms.\n\n'
-  body += '**2. Understand the Process**\nTake time to learn the specifics of ' + topic.toLowerCase() + '. Research, connect with other artists, and seek guidance from industry experts.\n\n'
-  body += '**3. Take Action Consistently**\nSuccess in music doesn\'t happen overnight. Consistent effort, strategic planning, and genuine artistic expression are the keys to long-term growth.\n\n'
-
-  if (length === 'long') {
-    body += '## Advanced Strategies\n\nOnce you have the basics down, consider these advanced approaches:\n\n'
-    body += '- Leverage data analytics to understand your audience\n- Collaborate with other artists in complementary genres\n- Build a direct relationship with your fans through social media\n- Explore sync licensing opportunities for additional revenue\n\n'
-    body += '## Common Mistakes to Avoid\n\nMany artists make these mistakes — learn from them:\n\n'
-    body += '1. Rushing the release without proper planning\n2. Ignoring the importance of metadata and artwork\n3. Neglecting to register with performing rights organizations\n4. Underestimating the value of playlisting and radio promotion\n\n'
-  }
-
-  var conclusion = '## Final Thoughts\n\n'
-  if (tone === 'inspirational') {
-    conclusion += 'Remember, every successful artist was once where you are now. The journey is the destination. Keep creating, keep sharing, and trust the process.\n\n'
-  } else {
-    conclusion += 'By following these guidelines and staying consistent, you\'ll be well on your way to achieving your goals as an independent artist. The music industry rewards those who are prepared and persistent.\n\n'
-  }
-
-  if (keywords) {
-    conclusion += '*Keywords: ' + keywords + '*\n'
-  }
-  conclusion += '\n---\n*Published on Tunefry Daily — India\'s Music Industry Blog*'
-
-  return intro + body + conclusion
-}
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 export default function AiBlog() {
-  const [tone, setTone] = useState('professional')
-  const [length, setLength] = useState('medium')
-  const [showOutput, setShowOutput] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [output, setOutput] = useState('')
-  const [history, setHistory] = useState([
-    { title: 'How to Pitch Your Music to Spotify Playlists', date: 'April 10, 2026 · Professional · Medium' },
-    { title: 'Understanding Music Royalties in India', date: 'April 8, 2026 · Educational · Long' },
-    { title: '5 Tips for Independent Artists in 2026', date: 'April 5, 2026 · Inspirational · Medium' },
-  ])
+  const { user } = useAuth()
+  const navigate = useNavigate()
 
-  const topicRef = useRef(null)
-  const keywordsRef = useRef(null)
-  const outputCardRef = useRef(null)
+  const [creditStatus, setCreditStatus] = useState(undefined) // undefined = loading, null = error
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
+
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [category, setCategory] = useState(FALLBACK_CATEGORIES[0].id)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [imageError, setImageError] = useState('')
+  const [formError, setFormError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const [purchasing, setPurchasing] = useState(null) // 'single' | 'bundle_20' | null
+  const [purchaseError, setPurchaseError] = useState('')
+
+  const imageInputRef = useRef(null)
 
   useEffect(() => {
-    if (showOutput && outputCardRef.current) {
-      outputCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [showOutput])
+    getCreditStatus().then(setCreditStatus).catch(() => setCreditStatus(null))
+    getCategories().then((list) => { if (Array.isArray(list) && list.length) setCategories(list) }).catch(() => {})
+  }, [])
 
-  function generateArticle() {
-    var topic = topicRef.current.value.trim()
-    if (!topic) {
-      topicRef.current.focus()
-      topicRef.current.style.borderColor = 'var(--red)'
-      setTimeout(function () { if (topicRef.current) topicRef.current.style.borderColor = '' }, 2000)
+  function handleImageChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setImageError('Please choose a JPEG, PNG, or WebP image.')
       return
     }
-
-    setLoading(true)
-
-    var keywords = keywordsRef.current.value
-
-    setTimeout(function () {
-      var article = generatePlaceholderArticle(topic, tone, length, keywords)
-      setOutput(article)
-      setShowOutput(true)
-      setLoading(false)
-
-      setHistory(function (prev) {
-        return [{ title: topic, date: 'Just now · ' + capitalize(tone) + ' · ' + capitalize(length) }, ...prev]
-      })
-    }, 1800)
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError('Image must be under 5 MB.')
+      return
+    }
+    setImageError('')
+    setImageFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setImagePreview(ev.target.result)
+    reader.readAsDataURL(file)
   }
 
-  function copyArticle() {
-    var text = output
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(function () { alert('Article copied to clipboard!') })
-    } else {
-      alert('Article copied to clipboard!')
+  async function handleSubmit() {
+    const trimmedTitle = title.trim()
+    const trimmedBody = body.trim()
+    if (!trimmedTitle || !trimmedBody) {
+      setFormError('Title and article body are required.')
+      return
+    }
+    if (!imageFile) {
+      setFormError('Please add a cover image.')
+      return
+    }
+    setFormError('')
+    setSubmitting(true)
+    try {
+      const { key } = await uploadBlogImage(imageFile)
+      await submitArticle({
+        title: trimmedTitle,
+        body: trimmedBody,
+        category,
+        cover_image_key: key,
+      })
+      setSubmitted(true)
+    } catch (err) {
+      setFormError(err.message || 'Could not submit your article. Please try again.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  function clearOutput() {
-    setOutput('')
-    setShowOutput(false)
+  async function handleBuy(pack) {
+    setPurchaseError('')
+    setPurchasing(pack)
+    try {
+      await buyCreditPack(pack, { name: user?.artistName || user?.full_name, email: user?.email })
+      const fresh = await getCreditStatus()
+      setCreditStatus(fresh)
+    } catch (err) {
+      setPurchaseError(err.message || 'Payment could not be completed.')
+    } finally {
+      setPurchasing(null)
+    }
   }
 
   return (
-    <>
+    <div className="blog-writer-page">
       <div className="page-label animate-in">
         <svg viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
-        AI Tools
+        Tunefry Daily
       </div>
 
       <div className="page-header animate-in animate-in-delay-1">
-        <h1 className="page-title">Blog Writer</h1>
+        <h1 className="page-title">Write a Blog</h1>
         <div className="page-header-actions">
           <Link to="/daily" className="btn btn-outline">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
@@ -117,163 +120,149 @@ export default function AiBlog() {
         </div>
       </div>
 
-      {/* AI Writer Form */}
-      <div className="glass-card blog-form-card animate-in animate-in-delay-2">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(242,101,34,0.15)', border: '0.5px solid rgba(242,101,34,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700 }}>AI Article Generator</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Create music industry blog posts in seconds</div>
-          </div>
-          <div style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--accent)', background: 'rgba(242,101,34,0.1)', border: '0.5px solid rgba(242,101,34,0.2)', borderRadius: '100px', padding: '4px 10px' }}>Beta</div>
+      {creditStatus === undefined && (
+        <div className="glass-card blog-form-card animate-in animate-in-delay-2" style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+          Loading...
         </div>
+      )}
 
-        <div className="blog-form-grid">
+      {creditStatus === null && (
+        <div className="glass-card blog-form-card animate-in animate-in-delay-2" style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+          Couldn't load your publishing status. Please refresh the page.
+        </div>
+      )}
 
-          <div className="blog-form-group" style={{ gridColumn: '1/-1' }}>
-            <label className="blog-form-label">Article Topic *</label>
-            <input type="text" className="blog-form-input" id="blogTopic" ref={topicRef} placeholder="e.g. How to pitch your music to Spotify playlists" />
-          </div>
+      {creditStatus && submitted && (
+        <div className="glass-card blog-form-card animate-in animate-in-delay-2" style={{ textAlign: 'center', padding: '40px 24px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700, marginBottom: '8px' }}>Submitted for review</div>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+            Our team will review your draft and let you know once it's published. You'll get a notification either way.
+          </p>
+          <Link to="/daily" className="btn btn-create">Back to Tunefry Daily</Link>
+        </div>
+      )}
 
-          <div className="blog-form-group">
-            <label className="blog-form-label">Keywords (comma separated)</label>
-            <input type="text" className="blog-form-input" id="blogKeywords" ref={keywordsRef} placeholder="e.g. Spotify, playlist pitching, independent artists" />
-          </div>
-
-          <div className="blog-form-group">
-            <label className="blog-form-label">Article Length</label>
-            <div className="length-selector">
-              <button className={'tone-btn' + (length === 'short' ? ' active' : '')} onClick={() => setLength('short')}>Short</button>
-              <button className={'tone-btn' + (length === 'medium' ? ' active' : '')} onClick={() => setLength('medium')}>Medium</button>
-              <button className={'tone-btn' + (length === 'long' ? ' active' : '')} onClick={() => setLength('long')}>Long</button>
+      {/* Compose form — only when a free article or a paid credit is available */}
+      {creditStatus && creditStatus.can_publish && !submitted && (
+        <div className="glass-card blog-form-card animate-in animate-in-delay-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(242,101,34,0.15)', border: '0.5px solid rgba(242,101,34,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
             </div>
-            <input type="hidden" id="blogLength" value={length} />
-          </div>
-
-          <div className="blog-form-group" style={{ gridColumn: '1/-1' }}>
-            <label className="blog-form-label">Writing Tone</label>
-            <div className="tone-selector">
-              <button className={'tone-btn' + (tone === 'professional' ? ' active' : '')} onClick={() => setTone('professional')}>Professional</button>
-              <button className={'tone-btn' + (tone === 'casual' ? ' active' : '')} onClick={() => setTone('casual')}>Casual</button>
-              <button className={'tone-btn' + (tone === 'inspirational' ? ' active' : '')} onClick={() => setTone('inspirational')}>Inspirational</button>
-              <button className={'tone-btn' + (tone === 'educational' ? ' active' : '')} onClick={() => setTone('educational')}>Educational</button>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700 }}>Submit Your Draft</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Just give us a basic overview — our team will polish it before it goes live.</div>
             </div>
-            <input type="hidden" id="blogTone" value={tone} />
           </div>
 
-        </div>
+          <div className="blog-form-grid">
+            <div className="blog-form-group" style={{ gridColumn: '1/-1' }}>
+              <label className="blog-form-label">Article Title *</label>
+              <input type="text" className="blog-form-input" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="e.g. My Journey From Bedroom Producer to My First Release" />
+            </div>
 
-        <button className={'blog-generate-btn' + (loading ? ' loading' : '')} id="generateBtn" onClick={generateArticle} disabled={loading}>
-          {loading ? (
-            'âš¡ Generating...'
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline', marginRight: '8px' }}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
-              Generate Article
-            </>
-          )}
-        </button>
-      </div>
+            <div className="blog-form-group" style={{ gridColumn: '1/-1' }}>
+              <label className="blog-form-label">Article Body *</label>
+              <textarea className="blog-form-input" style={{ minHeight: '180px', resize: 'vertical', fontFamily: 'var(--font-body)' }} value={body} onChange={(e) => setBody(e.target.value)} maxLength={20000} placeholder="Write your draft here — don't worry about polish, we'll take care of that." />
+            </div>
 
-      {/* Output */}
-      <div className="glass-card blog-output-card animate-in animate-in-delay-3" id="outputCard" ref={outputCardRef} style={{ display: showOutput ? 'block' : 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700 }}>Generated Article</div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-sm btn-outline" onClick={copyArticle} title="Copy to clipboard">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
-              Copy
-            </button>
-            <button className="btn btn-sm btn-outline" onClick={clearOutput} title="Clear">Clear</button>
+            <div className="blog-form-group" style={{ gridColumn: '1/-1' }}>
+              <label className="blog-form-label">Category</label>
+              <div className="tone-selector">
+                {categories.map((c) => (
+                  <button key={c.id} type="button" className={'tone-btn' + (category === c.id ? ' active' : '')} onClick={() => setCategory(c.id)}>{c.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="blog-form-group" style={{ gridColumn: '1/-1' }}>
+              <label className="blog-form-label">Cover Image *</label>
+              <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="blog-form-input" onChange={handleImageChange} />
+              {imageError && <p style={{ fontSize: '12px', color: '#f87171', margin: 0 }}>{imageError}</p>}
+              {imagePreview && (
+                <img src={imagePreview} alt="Cover preview" style={{ marginTop: '10px', maxHeight: '160px', borderRadius: '10px', border: '0.5px solid var(--border-subtle)' }} />
+              )}
+            </div>
           </div>
-        </div>
-        <textarea className="blog-output-area" id="blogOutput" placeholder="Your generated article will appear here..." value={output} onChange={(e) => setOutput(e.target.value)}></textarea>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', flexWrap: 'wrap', gap: '12px' }}>
-          <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Review and edit the article before publishing. AI-generated content may require human review.</p>
-          <button className="blog-publish-btn" title="Backend integration required to publish">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ display: 'inline', marginRight: '6px' }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-            Publish to Tunefry Daily
+
+          {formError && <p style={{ fontSize: '12px', color: '#f87171', marginBottom: '12px' }}>{formError}</p>}
+
+          <button className={'blog-generate-btn' + (submitting ? ' loading' : '')} onClick={handleSubmit} disabled={submitting}>
+            {submitting ? 'Submitting...' : 'Submit for Review'}
           </button>
         </div>
-      </div>
+      )}
 
-      {/* Article History */}
-      <div className="glass-card animate-in animate-in-delay-4" style={{ padding: '20px', marginTop: '16px' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, marginBottom: '16px' }}>Recent Articles</div>
-        <div id="articleHistory">
-          {history.map((h, i) => (
-            <div className="blog-history-item" key={i}>
-              <div className="blog-history-title">{h.title}</div>
-              <div className="blog-history-date">{h.date}</div>
+      {/* Publishing Plans — shown once the free article and any paid credits are used up */}
+      {creditStatus && !creditStatus.can_publish && !submitted && (
+        <div className="animate-in animate-in-delay-2">
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Article Publishing Plans</div>
+          <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '16px' }}>You've used your free article. Grab a credit pack to keep publishing on Tunefry Daily.</div>
+
+          {purchaseError && <p style={{ fontSize: '12.5px', color: '#f87171', marginBottom: '16px' }}>{purchaseError}</p>}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '16px' }}>
+
+            {/* Free — already used */}
+            <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', marginBottom: '14px' }}>Free</div>
+              <div style={{ marginBottom: '18px' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '32px', letterSpacing: '-.03em' }}>₹ 0</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '20px' }}>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>1 free article, ever</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Basic visibility</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Tunefry branding</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Standard formatting</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Community rating</li>
+              </ul>
+              <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'center' }} disabled>Already Used</button>
             </div>
-          ))}
+
+            {/* Pay Per Article */}
+            <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', borderColor: 'rgba(242,101,34,0.35)', background: 'rgba(242,101,34,0.04)' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', marginBottom: '14px' }}>Pay Per Article</div>
+              <div style={{ marginBottom: '18px' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '32px', letterSpacing: '-.03em' }}>₹ 49</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>/article</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '20px' }}>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>1 article credit</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Enhanced visibility</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Author branding</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Advanced formatting</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Priority placement</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Basic analytics</li>
+              </ul>
+              <button className="btn-create" style={{ width: '100%', justifyContent: 'center', borderRadius: '8px' }} onClick={() => handleBuy('single')} disabled={purchasing !== null}>
+                {purchasing === 'single' ? 'Processing...' : 'Publish Now'}
+              </button>
+            </div>
+
+            {/* 20-Article Pack */}
+            <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', marginBottom: '14px' }}>20-Article Pack</div>
+              <div style={{ marginBottom: '18px' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '32px', letterSpacing: '-.03em' }}>₹ 799</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>one-time</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '20px' }}>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>20 article credits</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Top placement</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Verified author badge</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Custom design options</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Newsletter feature</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Advanced analytics</li>
+                <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Promotion on social media</li>
+              </ul>
+              <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'center' }} onClick={() => handleBuy('bundle_20')} disabled={purchasing !== null}>
+                {purchasing === 'bundle_20' ? 'Processing...' : 'Publish Now'}
+              </button>
+            </div>
+
+          </div>
         </div>
-      </div>
-
-      {/* Publishing Plans */}
-      <div className="animate-in animate-in-delay-4" style={{ marginTop: '16px' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>Article Publishing Plans</div>
-        <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '20px' }}>Choose the perfect plan to share your music knowledge with our community.</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '16px' }}>
-
-          {/* Free */}
-          <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', marginBottom: '14px' }}>Free</div>
-            <div style={{ marginBottom: '18px' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '32px', letterSpacing: '-.03em' }}>₹ 0</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>/article</span>
-            </div>
-            <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '20px' }}>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>1 free article per month</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Basic visibility</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Tunefry branding</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Standard formatting</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Community rating</li>
-            </ul>
-            <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'center' }}>Publish Now</button>
-          </div>
-
-          {/* Pay Per Article */}
-          <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', borderColor: 'rgba(242,101,34,0.35)', background: 'rgba(242,101,34,0.04)' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', marginBottom: '14px' }}>Pay Per Article</div>
-            <div style={{ marginBottom: '18px' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '32px', letterSpacing: '-.03em' }}>₹ 49</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>/article</span>
-            </div>
-            <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '20px' }}>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>No monthly limit</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Enhanced visibility</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Author branding</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Advanced formatting</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Priority placement</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Basic analytics</li>
-            </ul>
-            <button className="btn-create" style={{ width: '100%', justifyContent: 'center', borderRadius: '8px' }}>Publish Now</button>
-          </div>
-
-          {/* Unlimited Yearly */}
-          <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', marginBottom: '14px' }}>Unlimited Yearly</div>
-            <div style={{ marginBottom: '18px' }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '32px', letterSpacing: '-.03em' }}>₹ 799</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>/article</span>
-            </div>
-            <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '20px' }}>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Unlimited articles</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Top placement</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Verified author badge</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Custom design options</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Newsletter feature</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Advanced analytics</li>
-              <li style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', position: 'relative' }}><span style={{ position: 'absolute', left: 0, color: 'var(--accent)', fontWeight: 700 }}>✓</span>Promotion on social media</li>
-            </ul>
-            <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'center' }}>Publish Now</button>
-          </div>
-
-        </div>
-      </div>
-    </>
+      )}
+    </div>
   )
 }

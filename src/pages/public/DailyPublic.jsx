@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { getCategories, getPosts } from '../../lib/blog'
+import { API_BASE } from '../../lib/config'
 
 function useScrollReveal() {
   useEffect(() => {
@@ -14,102 +16,97 @@ function useScrollReveal() {
   }, [])
 }
 
-const FILTER_TABS = [
-  { id: 'all', label: 'All', count: 15 },
-  { id: 'tunefry-daily', label: 'Tunefry Daily', count: 7 },
-  { id: 'guides', label: 'Guides', count: 1 },
-  { id: 'new-release', label: 'New Release', count: 6 },
-  { id: 'events', label: 'Events', count: 1 },
+const PER_PAGE = 12
+
+const FALLBACK_CATEGORIES = [
+  { id: 'artist_journey', label: 'Artist Journey' },
+  { id: 'song_release', label: 'Song Release' },
+  { id: 'informative', label: 'Informative' },
+  { id: 'success_story', label: 'Success Story' },
 ]
 
-const ARTICLES = [
-  {
-    id: 1, type: 'tunefry-daily', tag: 'Tunefry Daily', tagCls: 'tag-pu',
-    date: 'April 5, 2026',
-    title: '12 Hidden Revenue Streams You\'re Missing When Understanding Music Royalties',
-    exc: 'Most independent artists only scratch the surface of royalty collection. We break down every revenue channel available to you and show you exactly how to claim what you\'re owed.',
-    img: 'https://www.tunefry.com/uploads/understanding music royalties.jpg',
-    featured: true,
-  },
-  {
-    id: 2, type: 'guides', tag: 'Guide', tagCls: 'tag-gr',
-    date: 'March 30, 2026',
-    title: 'The Beginner\'s Roadmap to Playlist Pitching Through an Indian Music Distribution Platform',
-    exc: 'Playlist pitching can 10x your streams. Here\'s the complete guide to pitching your tracks as an independent artist.',
-    img: 'https://www.tunefry.com/uploads/Indian music distribution.png',
-  },
-  {
-    id: 3, type: 'tunefry-daily', tag: 'Tunefry Daily', tagCls: 'tag-pu',
-    date: 'March 26, 2026',
-    title: 'The Truth About Unlimited Upload Plans When You Distribute Music Online',
-    exc: '',
-    img: 'https://www.tunefry.com/uploads/Distribute Music Online.jpg',
-  },
-  {
-    id: 4, type: 'new-release', tag: 'New Release', tagCls: 'tag-or',
-    date: 'March 22, 2026',
-    title: 'Chote Se Bada — Out Soon',
-    exc: '',
-    img: 'https://www.tunefry.com/uploads/1000156552.jpg',
-  },
-]
+const CATEGORY_TAG_CLASS = {
+  artist_journey: 'tag-pu',
+  song_release: 'tag-gr',
+  informative: 'tag-or',
+  success_story: 'tag-bl',
+}
 
-const ROW_ARTICLES = [
-  {
-    id: 5, type: 'tunefry-daily', tag: 'Tunefry Daily', tagCls: 'tag-pu',
-    date: 'March 18, 2026',
-    title: 'Building a Release Strategy Around 100% Royalties to Maximize Catalog Value',
-    exc: 'Learn how to time your releases, stack your catalog, and retain full ownership so every track keeps earning long after drop day.',
-    readTime: '6 min read',
-    img: 'https://www.tunefry.com/uploads/a-contemporary-workspace-photograph-show_hsp35n5rQ9a2moQZgM9yCA_QrtKtFWnT-aatRhzG9RlMQ (1).jpeg',
-  },
-  {
-    id: 6, type: 'tunefry-daily', tag: 'Tunefry Daily', tagCls: 'tag-pu',
-    date: 'March 14, 2026',
-    title: 'Distribute Music in India Like a Brand: Building a Release Calendar',
-    exc: 'A strategic release calendar turns singles into a narrative. Here is how to plan a quarter of drops that build momentum and listener habits.',
-    readTime: '5 min read',
-    img: 'https://www.tunefry.com/uploads/Lucid_Origin_Highquality_closeup_of_a_computer_screen_displayi_3.jpg',
-  },
-]
-
-const POPULAR = [
-  { title: 'How Independent Artists Are Reshaping the Music Industry in 2026', date: 'April 5, 2026' },
-  { title: 'Understanding Mechanical vs Performance Royalties', date: 'March 24, 2026' },
-  { title: 'TikTok Marketing: A Complete Guide for Musicians', date: 'March 28, 2026' },
-  { title: '10 Mistakes to Avoid When Releasing Your First Single', date: 'April 2, 2026' },
-]
+const CATEGORY_DOT_COLOR = {
+  artist_journey: '#a78bfa',
+  song_release: '#2DCA72',
+  informative: '#FF6B00',
+  success_story: '#ec4899',
+}
 
 const TOPICS = ['Royalties', 'Spotify', 'Distribution', 'Playlist Pitching', 'JioSaavn', 'Content ID', 'Hip-Hop', 'CRBT', 'Analytics', 'India']
 
-const CATS = [
-  { label: 'All', count: 15, color: '#FF6B00' },
-  { label: 'Tunefry Daily', count: 7, color: '#a78bfa' },
-  { label: 'New Release', count: 6, color: '#2DCA72' },
-  { label: 'Guides', count: 1, color: '#FF6B00' },
-  { label: 'Events', count: 1, color: '#ec4899' },
-]
+function formatDate(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
 
-const NL_ICON = (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--or)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-    <polyline points="22,6 12,13 2,6"/>
-  </svg>
-)
+function AuthorBadge({ authorType }) {
+  const isTunefry = authorType === 'tunefry'
+  return <span className={`tag ${isTunefry ? 'tag-tunefry' : 'tag-artist'}`}>{isTunefry ? 'Tunefry' : 'Artist'}</span>
+}
 
 export default function DailyPublic() {
   useScrollReveal()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('all')
-  const [activecat, setActivecat] = useState('All')
 
-  const filterAll = (articles) => {
-    if (activeTab === 'all') return articles
-    return articles.filter(a => a.type === activeTab)
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
+  const [category, setCategory] = useState(null) // null = All
+  const [page, setPage] = useState(1)
+  const [listData, setListData] = useState(undefined) // undefined = loading, null = error
+  const [allPosts, setAllPosts] = useState([])
+
+  useEffect(() => {
+    getCategories().then((list) => { if (Array.isArray(list) && list.length) setCategories(list) }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setListData(undefined)
+    getPosts({ category: category || undefined, page, perPage: PER_PAGE })
+      .then((data) => { if (!cancelled) setListData(data) })
+      .catch(() => { if (!cancelled) setListData(null) })
+    return () => { cancelled = true }
+  }, [category, page])
+
+  // Fetches every approved post once (across all pages) purely to derive the
+  // Featured / Popular sections client-side — the backend has no is_featured
+  // / is_popular query param, only the category filter.
+  useEffect(() => {
+    let cancelled = false
+    async function loadAll() {
+      try {
+        const first = await getPosts({ page: 1, perPage: 15 })
+        let all = first.posts || []
+        const totalPages = first.total_pages || 1
+        for (let p = 2; p <= totalPages; p++) {
+          const next = await getPosts({ page: p, perPage: 15 })
+          all = all.concat(next.posts || [])
+        }
+        if (!cancelled) setAllPosts(all)
+      } catch {
+        if (!cancelled) setAllPosts([])
+      }
+    }
+    loadAll()
+    return () => { cancelled = true }
+  }, [])
+
+  function selectCategory(id) {
+    setCategory(id)
+    setPage(1)
   }
 
-  const cards = filterAll(ARTICLES.filter(a => !a.featured))
-  const rows  = filterAll(ROW_ARTICLES)
+  const categoryLabelMap = Object.fromEntries(categories.map((c) => [c.id, c.label]))
+  const featured = allPosts.filter((p) => p.is_featured)
+  const popular = allPosts.filter((p) => p.is_popular).slice(0, 4)
+  const posts = Array.isArray(listData?.posts) ? listData.posts : []
+  const totalPages = listData?.total_pages || 1
 
   return (
     <>
@@ -141,54 +138,66 @@ export default function DailyPublic() {
         <div className="daily-main">
           {/* Filter Tabs */}
           <div className="daily-tabs au">
-            {FILTER_TABS.map(({ id, label, count }) => (
-              <div
-                key={id}
-                className={`daily-tab${activeTab === id ? ' on' : ''}`}
-                onClick={() => setActiveTab(id)}
-              >
+            <div className={`daily-tab${category === null ? ' on' : ''}`} onClick={() => selectCategory(null)}>All</div>
+            {categories.map(({ id, label }) => (
+              <div key={id} className={`daily-tab${category === id ? ' on' : ''}`} onClick={() => selectCategory(id)}>
                 {label}
-                {count > 0 && <span className="tab-ct">{count}</span>}
               </div>
             ))}
             <Link to="/daily/ai-blog" className="daily-tab">Artist Blog</Link>
           </div>
 
           {/* Featured */}
-          <div className="sec-label au">Featured article</div>
-          {ARTICLES.filter(a => a.featured).map(a => (
-            <div key={a.id} className="feat-card au" onClick={() => navigate('/article')} style={{ cursor: 'pointer' }}>
-              <div className="feat-img">
-                <img src={a.img} alt={a.title} />
-              </div>
-              <div className="feat-over" />
-              <div className="feat-num">01</div>
-              <div className="feat-body">
-                <span className={`tag ${a.tagCls}`}>{a.tag}</span>
-                <div className="feat-date">{a.date}</div>
-                <div className="feat-title">{a.title}</div>
-                <div className="feat-exc">{a.exc}</div>
-                <Link to="/article" className="btn-read">Read Article &rarr;</Link>
-              </div>
-            </div>
-          ))}
+          {featured.length > 0 && (
+            <>
+              <div className="sec-label au">Featured article</div>
+              {featured.slice(0, 1).map((post) => (
+                <div key={post.id} className="feat-card au" onClick={() => navigate(`/article/${post.slug}`)} style={{ cursor: 'pointer' }}>
+                  <div className="feat-img">
+                    {post.cover_image_key && <img src={`${API_BASE}/blog/assets/${post.cover_image_key}`} alt={post.title} />}
+                  </div>
+                  <div className="feat-over" />
+                  <div className="feat-num">01</div>
+                  <div className="feat-body">
+                    <span className={`tag ${CATEGORY_TAG_CLASS[post.category] || 'tag-or'}`}>{categoryLabelMap[post.category] || post.category}</span>
+                    <AuthorBadge authorType={post.author_type} />
+                    <div className="feat-date">{formatDate(post.published_at)}</div>
+                    <div className="feat-title">{post.title}</div>
+                    <Link to={`/article/${post.slug}`} className="btn-read">Read Article &rarr;</Link>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
 
           {/* Card Grid */}
-          {cards.length > 0 && (
+          {listData === undefined && (
+            <div className="au" style={{ padding: '32px 0', textAlign: 'center', color: 'var(--t3)', fontSize: 13 }}>Loading articles...</div>
+          )}
+          {listData === null && (
+            <div className="au" style={{ padding: '32px 0', textAlign: 'center', color: 'var(--t3)', fontSize: 13 }}>Couldn't load articles. Please refresh.</div>
+          )}
+          {Array.isArray(listData?.posts) && posts.length === 0 && (
+            <div className="au" style={{ padding: '32px 0', textAlign: 'center', color: 'var(--t3)', fontSize: 13 }}>No articles in this category yet.</div>
+          )}
+          {posts.length > 0 && (
             <>
               <div className="sec-label au">Latest articles</div>
               <div className="card-grid au">
-                {cards.map(a => (
-                  <div key={a.id} className="d-card" onClick={() => navigate('/article')} style={{ cursor: 'pointer' }}>
-                    <div className="d-card-img"><img src={a.img} alt={a.title} /></div>
+                {posts.map((post) => (
+                  <div key={post.id} className="d-card" onClick={() => navigate(`/article/${post.slug}`)} style={{ cursor: 'pointer' }}>
+                    <div className="d-card-img">
+                      {post.cover_image_key && <img src={`${API_BASE}/blog/assets/${post.cover_image_key}`} alt={post.title} />}
+                    </div>
                     <div className="d-card-body">
                       <div className="d-card-meta">
-                        <span className={`tag ${a.tagCls}`}>{a.tag}</span>
-                        <span className="d-card-date">{a.date}</span>
+                        <span className={`tag ${CATEGORY_TAG_CLASS[post.category] || 'tag-or'}`}>{categoryLabelMap[post.category] || post.category}</span>
+                        <AuthorBadge authorType={post.author_type} />
+                        <span className="d-card-date">{formatDate(post.published_at)}</span>
                       </div>
-                      <div className="d-card-title">{a.title}</div>
+                      <div className="d-card-title">{post.title}</div>
                       <div className="d-card-foot">
-                        <span className="d-card-author">Tunefry Team</span>
+                        <span className="d-card-author">{post.author_name || (post.author_type === 'tunefry' ? 'Tunefry Team' : '')}</span>
                         <span className="d-card-arrow">&rarr;</span>
                       </div>
                     </div>
@@ -198,40 +207,16 @@ export default function DailyPublic() {
             </>
           )}
 
-          {/* Row Cards */}
-          {rows.length > 0 && (
-            <>
-              <div className="sec-label au">More articles</div>
-              <div className="row-cards">
-                {rows.map(a => (
-                  <div key={a.id} className="row-card au" onClick={() => navigate('/article')} style={{ cursor: 'pointer' }}>
-                    <div className="row-card-img"><img src={a.img} alt={a.title} /></div>
-                    <div className="row-card-body">
-                      <span className={`tag ${a.tagCls}`}>{a.tag}</span>
-                      <div className="row-card-title">{a.title}</div>
-                      <div className="row-card-exc">{a.exc}</div>
-                      <div className="row-card-foot">
-                        <span>{a.date}</span>
-                        <span>&bull;</span>
-                        <span>{a.readTime}</span>
-                        <span className="row-card-read">Read &rarr;</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
           {/* Pagination */}
-          <div className="pagi au">
-            <div className="pagi-btn pagi-btn-wide">&larr;</div>
-            {[1,2,3].map(n => (
-              <div key={n} className={`pagi-btn${n === 1 ? ' on' : ''}`}>{n}</div>
-            ))}
-            <span className="pagi-dots">&hellip;</span>
-            <div className="pagi-btn pagi-btn-wide">Next &rarr;</div>
-          </div>
+          {totalPages > 1 && (
+            <div className="pagi au">
+              <div className={`pagi-btn pagi-btn-wide${page <= 1 ? ' disabled' : ''}`} onClick={() => page > 1 && setPage(page - 1)}>&larr;</div>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <div key={n} className={`pagi-btn${n === page ? ' on' : ''}`} onClick={() => setPage(n)}>{n}</div>
+              ))}
+              <div className={`pagi-btn pagi-btn-wide${page >= totalPages ? ' disabled' : ''}`} onClick={() => page < totalPages && setPage(page + 1)}>Next &rarr;</div>
+            </div>
+          )}
         </div>
 
         {/* ── SIDEBAR ── */}
@@ -240,49 +225,42 @@ export default function DailyPublic() {
           <div className="side-block">
             <div className="side-title">Browse by category</div>
             <div className="cat-list">
-              {CATS.map(({ label, count, color }) => (
-                <div key={label} className={`cat-row${activecat === label ? ' on' : ''}`} onClick={() => setActivecat(label)}>
-                  <span className="cat-dot" style={{ background: color }} />
+              <div className={`cat-row${category === null ? ' on' : ''}`} onClick={() => selectCategory(null)}>
+                <span className="cat-dot" style={{ background: '#FF6B00' }} />
+                All
+              </div>
+              {categories.map(({ id, label }) => (
+                <div key={id} className={`cat-row${category === id ? ' on' : ''}`} onClick={() => selectCategory(id)}>
+                  <span className="cat-dot" style={{ background: CATEGORY_DOT_COLOR[id] || '#FF6B00' }} />
                   {label}
-                  <span className="cat-ct">{count}</span>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Newsletter */}
-          <div className="side-block">
-            <div className="nl-card">
-              <div className="nl-ico">{NL_ICON}</div>
-              <div className="nl-h">Stay in the loop</div>
-              <p className="nl-p">Get the latest music industry insights delivered to your inbox every week. Join thousands of artists who stay ahead.</p>
-              <input className="nl-input" type="email" placeholder="your@email.com" />
-              <button className="nl-btn">Subscribe Free</button>
-              <div className="nl-note">No spam. Unsubscribe anytime.</div>
             </div>
           </div>
 
           {/* Popular */}
-          <div className="side-block">
-            <div className="side-title">Popular articles</div>
-            <div className="pop-list">
-              {POPULAR.map(({ title, date }, i) => (
-                <div key={title} className="pop-item">
-                  <div className="pop-num">0{i+1}</div>
-                  <div>
-                    <div className="pop-ttl">{title}</div>
-                    <div className="pop-date">{date}</div>
-                  </div>
-                </div>
-              ))}
+          {popular.length > 0 && (
+            <div className="side-block">
+              <div className="side-title">Popular articles</div>
+              <div className="pop-list">
+                {popular.map((post, i) => (
+                  <Link key={post.id} to={`/article/${post.slug}`} className="pop-item" style={{ textDecoration: 'none' }}>
+                    <div className="pop-num">0{i + 1}</div>
+                    <div>
+                      <div className="pop-ttl">{post.title}</div>
+                      <div className="pop-date">{formatDate(post.published_at)}</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Topics */}
           <div className="side-block">
             <div className="side-title">Topics</div>
             <div className="topic-cloud">
-              {TOPICS.map(t => (
+              {TOPICS.map((t) => (
                 <span key={t} className="topic-tag">{t}</span>
               ))}
             </div>

@@ -918,6 +918,9 @@
 .tag-pu { background: rgba(139,92,246,0.2); color: #a78bfa; }
 .tag-gr { background: rgba(45,202,114,0.15); color: #2DCA72; }
 .tag-or { background: var(--or-d); color: var(--or); }
+.tag-bl { background: rgba(236,72,153,0.15); color: #ec4899; }
+.tag-artist { background: rgba(255,255,255,0.08); color: var(--t3); margin-left: 6px; }
+.tag-tunefry { background: rgba(242,101,34,0.15); color: var(--or); margin-left: 6px; }
 .feat-date { font-size: 11.5px; color: var(--t3); margin-bottom: 8px; }
 .feat-title { font-family: var(--font-d); font-size: clamp(1.1rem, 2.5vw, 1.4rem); font-weight: 800; line-height: 1.2; margin-bottom: 10px; color: #fff; }
 .feat-exc { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.6; }

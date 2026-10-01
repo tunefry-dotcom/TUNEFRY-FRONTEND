@@ -161,6 +161,7 @@ function AdminSidebar({ active, onNav, onLock }) {
     { id: 'withdrawals', label: 'Withdrawals', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> },
     { id: 'earnings', label: 'Earnings', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
     { id: 'master-home', label: 'Master Home', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+    { id: 'blog', label: 'Tunefry Daily', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 3h12a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2-3-2-3 2V5a2 2 0 0 1 2-2z"/><line x1="8" y1="7" x2="14" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/><line x1="8" y1="15" x2="11" y2="15"/></svg> },
     { id: 'announcements', label: 'Announcements', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> },
   ]
 
@@ -1643,6 +1644,13 @@ function MasterHomeView({ secret, onSessionExpired }) {
         ))}
       </div>
 
+      {/* Tunefry Daily — Featured / Popular */}
+      <div style={card}>
+        <div style={secLabel}>Tunefry Daily — Featured / Popular</div>
+        <p style={{ color: '#555', fontSize: '.8rem', margin: '0 0 12px' }}>Curate which published articles show in the Featured spot and Popular sidebar on /daily-public.</p>
+        <BlogCurationCard secret={secret} onSessionExpired={onSessionExpired} />
+      </div>
+
     </div>
   )
 }
@@ -1749,6 +1757,430 @@ function AnnouncementsView({ secret, onSessionExpired }) {
             </div>
           )}
       </div>
+    </div>
+  )
+}
+
+// ── Tunefry Daily (blog) view ────────────────────────────────────────────────
+const BLOG_CATEGORIES = [
+  { id: 'artist_journey', label: 'Artist Journey' },
+  { id: 'song_release', label: 'Song Release' },
+  { id: 'informative', label: 'Informative' },
+  { id: 'success_story', label: 'Success Story' },
+]
+
+function BlogView({ secret, onSessionExpired }) {
+  const [tab, setTab] = useState('artist')
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '1.5rem 1.75rem 1rem', borderBottom: '1px solid #1a1a1a' }}>
+        <h2 style={{ color: '#f0f0f0', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Tunefry Daily</h2>
+        <p style={{ color: '#555', margin: '.2rem 0 0', fontSize: '.82rem' }}>Review artist submissions or compose official Tunefry posts</p>
+        <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
+          {['artist', 'tunefry'].map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{
+                padding: '.5rem 1.1rem', borderRadius: 8, border: `1px solid ${tab === t ? 'rgba(255,107,43,.4)' : '#2a2a2a'}`,
+                background: tab === t ? 'rgba(255,107,43,.12)' : '#141414',
+                color: tab === t ? '#ff8a4c' : '#9ca3af', fontSize: '.84rem', fontWeight: 600, cursor: 'pointer',
+              }}>
+              {t === 'artist' ? 'Artist Submissions' : 'Tunefry Posts'}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem 1.75rem' }}>
+        {tab === 'artist'
+          ? <ArtistBlogTab secret={secret} onSessionExpired={onSessionExpired} />
+          : <TunefryBlogTab secret={secret} onSessionExpired={onSessionExpired} />}
+      </div>
+    </div>
+  )
+}
+
+function ArtistBlogTab({ secret, onSessionExpired }) {
+  const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [draftById, setDraftById] = useState({})
+  const [noteById, setNoteById] = useState({})
+  const [busyId, setBusyId] = useState(null)
+
+  const load = useCallback(() => {
+    setLoading(true); setError('')
+    fetch(`${BASE}/admin/blog/artist`, { headers: { 'X-Admin-Secret': secret } })
+      .then((res) => {
+        if (res.status === 403) { onSessionExpired(); return null }
+        if (!res.ok) throw new Error('Failed to load submissions')
+        return res.json()
+      })
+      .then((data) => {
+        if (!data) return
+        setPosts(data)
+        setDraftById((prev) => {
+          const next = { ...prev }
+          data.forEach((p) => {
+            if (!next[p.id]) next[p.id] = { title: p.final_title || p.original_title, body: p.final_body || p.original_body }
+          })
+          return next
+        })
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [secret, onSessionExpired])
+
+  useEffect(() => { load() }, [load])
+
+  const setDraft = (id, patch) => setDraftById((d) => ({ ...d, [id]: { ...d[id], ...patch } }))
+
+  const rewrite = async (post) => {
+    const draft = draftById[post.id]
+    setBusyId(post.id)
+    try {
+      const res = await fetch(`${BASE}/admin/blog/rewrite`, {
+        method: 'POST',
+        headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: draft.title, body: draft.body }),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Rewrite failed')
+      }
+      const { title, body } = await res.json()
+      setDraft(post.id, { title, body })
+    } catch (e) { alert(e.message) } finally { setBusyId(null) }
+  }
+
+  const review = async (post, status) => {
+    const draft = draftById[post.id] || {}
+    const note = (noteById[post.id] || '').trim()
+    if (status === 'approved' && (!draft.title?.trim() || !draft.body?.trim())) {
+      alert('Both a final title and final body are required to approve.'); return
+    }
+    if (status === 'declined' && !note) {
+      alert('A comment is required to decline — it will be shown to the artist.'); return
+    }
+    setBusyId(post.id)
+    try {
+      const body = status === 'approved'
+        ? { status, final_title: draft.title.trim(), final_body: draft.body.trim() }
+        : { status, admin_note: note }
+      const res = await fetch(`${BASE}/admin/blog/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Review failed')
+      }
+      const updated = await res.json()
+      setPosts((ps) => ps.map((p) => (p.id === post.id ? updated : p)))
+      setNoteById((n) => { const next = { ...n }; delete next[post.id]; return next })
+    } catch (e) { alert(e.message) } finally { setBusyId(null) }
+  }
+
+  const inp = {
+    background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7,
+    padding: '.5rem .75rem', color: '#f0f0f0', fontSize: '.85rem',
+    outline: 'none', width: '100%', boxSizing: 'border-box',
+  }
+
+  if (loading) return <div style={{ color: '#6b7280' }}>Loading…</div>
+  if (error) return <div style={{ color: '#f87171' }}>{error}</div>
+  if (posts.length === 0) return <div style={{ color: '#6b7280' }}>No artist submissions yet.</div>
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      {posts.map((post) => {
+        const draft = draftById[post.id] || { title: '', body: '' }
+        const note = noteById[post.id] || ''
+        const pending = post.status === 'pending'
+        const badgeColor = post.status === 'approved' ? '#22C55E' : post.status === 'declined' ? '#f87171' : '#EAB308'
+        return (
+          <div key={post.id} style={{ background: pending ? '#111' : '#0c0c0c', border: `1px solid ${pending ? '#242424' : '#1a1a1a'}`, borderRadius: 12, padding: '1.1rem 1.25rem', opacity: pending ? 1 : 0.6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+              <div>
+                <div style={{ color: '#e5e7eb', fontSize: '.9rem', fontWeight: 600 }}>{post.author_name || post.author_email}</div>
+                <div style={{ color: '#6b7280', fontSize: '.75rem', marginTop: 2 }}>{post.author_email} · {BLOG_CATEGORIES.find((c) => c.id === post.category)?.label || post.category}</div>
+              </div>
+              <span style={{ padding: '2px 9px', borderRadius: 100, fontSize: '.66rem', fontWeight: 700, textTransform: 'uppercase', color: badgeColor, border: `1px solid ${badgeColor}55` }}>{post.status}</span>
+            </div>
+
+            {post.cover_image_keys?.[0] && (
+              <img src={`${BASE}/blog/assets/${post.cover_image_keys[0]}`} alt="" style={{ width: 160, height: 100, objectFit: 'cover', borderRadius: 8, marginBottom: 10 }} />
+            )}
+
+            <div style={{ color: '#555', fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Original draft</div>
+            <div style={{ color: '#9ca3af', fontSize: '.82rem', marginBottom: 4, fontWeight: 600 }}>{post.original_title}</div>
+            <div style={{ color: '#6b7280', fontSize: '.8rem', marginBottom: 12, whiteSpace: 'pre-wrap', maxHeight: 120, overflow: 'auto' }}>{post.original_body}</div>
+
+            {pending && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <div style={{ color: '#555', fontSize: '.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Final copy (edit freely)</div>
+                  <button disabled={busyId === post.id} onClick={() => rewrite(post)}
+                    style={{ padding: '.3rem .7rem', borderRadius: 6, border: '1px solid rgba(167,139,250,.35)', background: 'rgba(167,139,250,.1)', color: '#a78bfa', fontSize: '.75rem', fontWeight: 600, cursor: busyId === post.id ? 'wait' : 'pointer' }}>
+                    ✨ AI Rewrite
+                  </button>
+                </div>
+                <input value={draft.title} onChange={(e) => setDraft(post.id, { title: e.target.value })} placeholder="Final title" style={{ ...inp, marginBottom: 8 }} />
+                <textarea value={draft.body} onChange={(e) => setDraft(post.id, { body: e.target.value })} placeholder="Final body" rows={5} style={{ ...inp, resize: 'vertical', marginBottom: 10 }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <button disabled={busyId === post.id || !draft.title?.trim() || !draft.body?.trim()} onClick={() => review(post, 'approved')}
+                    style={{ padding: '.5rem .9rem', borderRadius: 8, border: '1px solid rgba(34,197,94,.35)', background: 'rgba(34,197,94,.12)', color: '#22C55E', fontSize: '.82rem', fontWeight: 600, cursor: busyId === post.id ? 'wait' : 'pointer', opacity: draft.title?.trim() && draft.body?.trim() ? 1 : 0.5 }}>
+                    Approve & Publish
+                  </button>
+                  <input value={note} onChange={(e) => setNoteById((n) => ({ ...n, [post.id]: e.target.value }))} placeholder="Decline comment (required)" style={{ ...inp, flex: 1, minWidth: 200 }} />
+                  <button disabled={busyId === post.id || !note.trim()} onClick={() => review(post, 'declined')}
+                    style={{ padding: '.5rem .9rem', borderRadius: 8, border: '1px solid rgba(248,113,113,.35)', background: 'rgba(248,113,113,.08)', color: '#f87171', fontSize: '.82rem', fontWeight: 600, cursor: busyId === post.id ? 'wait' : 'pointer', opacity: note.trim() ? 1 : 0.5 }}>
+                    Decline
+                  </button>
+                </div>
+              </>
+            )}
+
+            {!pending && post.admin_note && (
+              <div style={{ color: '#9ca3af', fontSize: '.75rem', marginTop: 6, fontStyle: 'italic' }}>"{post.admin_note}"</div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function TunefryBlogTab({ secret, onSessionExpired }) {
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [category, setCategory] = useState(BLOG_CATEGORIES[0].id)
+  const [imageKeys, setImageKeys] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [rewriting, setRewriting] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [posts, setPosts] = useState([])
+  const [loadingPosts, setLoadingPosts] = useState(true)
+
+  const loadPosts = useCallback(() => {
+    setLoadingPosts(true)
+    fetch(`${BASE}/admin/blog/tunefry`, { headers: { 'X-Admin-Secret': secret } })
+      .then((res) => {
+        if (res.status === 403) { onSessionExpired(); return null }
+        if (!res.ok) return []
+        return res.json()
+      })
+      .then((data) => { if (data) setPosts(data) })
+      .catch(() => {})
+      .finally(() => setLoadingPosts(false))
+  }, [secret, onSessionExpired])
+
+  useEffect(() => { loadPosts() }, [loadPosts])
+
+  const uploadImage = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (imageKeys.length >= 2) { setMsg('Maximum 2 images.'); return }
+    setUploading(true); setMsg('')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${BASE}/admin/blog/images`, { method: 'POST', headers: { 'X-Admin-Secret': secret }, body: form })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Upload failed')
+      }
+      const { key } = await res.json()
+      setImageKeys((keys) => [...keys, key])
+    } catch (e) { setMsg(e.message) } finally { setUploading(false) }
+  }
+
+  const removeImage = (idx) => setImageKeys((keys) => keys.filter((_, i) => i !== idx))
+
+  const rewrite = async () => {
+    if (!title.trim() || !body.trim()) { setMsg('Write a title and body first.'); return }
+    setRewriting(true); setMsg('')
+    try {
+      const res = await fetch(`${BASE}/admin/blog/rewrite`, {
+        method: 'POST', headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body }),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Rewrite failed')
+      }
+      const data = await res.json()
+      setTitle(data.title); setBody(data.body)
+    } catch (e) { setMsg(e.message) } finally { setRewriting(false) }
+  }
+
+  const publish = async () => {
+    if (!title.trim() || !body.trim()) { setMsg('Title and body are required.'); return }
+    if (imageKeys.length === 0) { setMsg('At least 1 image is required.'); return }
+    setPublishing(true); setMsg('')
+    try {
+      const res = await fetch(`${BASE}/admin/blog/tunefry`, {
+        method: 'POST', headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ final_title: title.trim(), final_body: body.trim(), category, cover_image_keys: imageKeys }),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Publish failed')
+      }
+      setTitle(''); setBody(''); setImageKeys([]); setCategory(BLOG_CATEGORIES[0].id)
+      setMsg('Published!')
+      loadPosts()
+      setTimeout(() => setMsg(''), 3000)
+    } catch (e) { setMsg(e.message) } finally { setPublishing(false) }
+  }
+
+  const inp = {
+    background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7,
+    padding: '.5rem .75rem', color: '#f0f0f0', fontSize: '.85rem',
+    outline: 'none', width: '100%', boxSizing: 'border-box',
+  }
+
+  const busy = uploading || rewriting || publishing
+
+  return (
+    <div>
+      <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 11, padding: '1.25rem', marginBottom: '1.75rem', maxWidth: 720 }}>
+        <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '1rem' }}>Compose Tunefry Post</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} style={inp} />
+          <textarea placeholder="Body" value={body} onChange={(e) => setBody(e.target.value)} rows={6} style={{ ...inp, resize: 'vertical' }} />
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {BLOG_CATEGORIES.map((c) => (
+              <button key={c.id} onClick={() => setCategory(c.id)}
+                style={{ padding: '.4rem .8rem', borderRadius: 100, border: `1px solid ${category === c.id ? 'rgba(255,107,43,.4)' : '#2a2a2a'}`, background: category === c.id ? 'rgba(255,107,43,.12)' : 'transparent', color: category === c.id ? '#ff8a4c' : '#9ca3af', fontSize: '.78rem', fontWeight: 600, cursor: 'pointer' }}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>Images ({imageKeys.length}/2)</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {imageKeys.map((key, i) => (
+                <div key={key} style={{ position: 'relative' }}>
+                  <img src={`${BASE}/blog/assets/${key}`} alt="" style={{ width: 90, height: 70, objectFit: 'cover', borderRadius: 6 }} />
+                  <button onClick={() => removeImage(i)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', border: 'none', background: '#f87171', color: '#fff', fontSize: '.7rem', cursor: 'pointer', lineHeight: 1 }}>×</button>
+                </div>
+              ))}
+              {imageKeys.length < 2 && (
+                <label style={{ width: 90, height: 70, border: '1px dashed #2a2a2a', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '.75rem', cursor: 'pointer' }}>
+                  {uploading ? '…' : '+ Add'}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadImage} disabled={busy} />
+                </label>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button disabled={busy} onClick={rewrite}
+              style={{ padding: '.55rem 1rem', borderRadius: 8, border: '1px solid rgba(167,139,250,.35)', background: 'rgba(167,139,250,.1)', color: '#a78bfa', fontSize: '.82rem', fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+              {rewriting ? 'Rewriting…' : '✨ AI Rewrite'}
+            </button>
+            <button disabled={busy} onClick={publish}
+              style={{ padding: '.55rem 1.2rem', borderRadius: 8, border: 'none', background: busy ? '#1a1a1a' : 'linear-gradient(135deg,#ff6b2b,#ff4500)', color: busy ? '#444' : '#fff', fontSize: '.85rem', fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+              {publishing ? 'Publishing…' : 'Publish'}
+            </button>
+            {msg && <span style={{ color: msg === 'Published!' ? '#4ade80' : '#f87171', fontSize: '.82rem' }}>{msg}</span>}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ color: '#555', fontSize: '.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '1rem' }}>Published Tunefry Posts</div>
+      {loadingPosts && <div style={{ color: '#6b7280', fontSize: '.85rem' }}>Loading…</div>}
+      {!loadingPosts && posts.length === 0 && <div style={{ color: '#555', fontSize: '.85rem' }}>No Tunefry posts published yet.</div>}
+      {posts.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 720 }}>
+          {posts.map((p) => (
+            <div key={p.id} style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 10, padding: '1rem 1.25rem', display: 'flex', gap: 12, alignItems: 'center' }}>
+              {p.cover_image_keys?.[0] && (
+                <img src={`${BASE}/blog/assets/${p.cover_image_keys[0]}`} alt="" style={{ width: 60, height: 45, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+              )}
+              <div>
+                <div style={{ color: '#f0f0f0', fontSize: '.9rem', fontWeight: 600 }}>{p.final_title}</div>
+                <div style={{ color: '#555', fontSize: '.75rem', marginTop: 2 }}>{BLOG_CATEGORIES.find((c) => c.id === p.category)?.label || p.category} · {p.published_at ? new Date(p.published_at).toLocaleString() : ''}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BlogCurationCard({ secret, onSessionExpired }) {
+  const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState(null)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    Promise.all([
+      fetch(`${BASE}/admin/blog/artist?status=approved`, { headers: { 'X-Admin-Secret': secret } }),
+      fetch(`${BASE}/admin/blog/tunefry?status=approved`, { headers: { 'X-Admin-Secret': secret } }),
+    ])
+      .then(async ([r1, r2]) => {
+        if (r1.status === 403 || r2.status === 403) { onSessionExpired(); return null }
+        const [a, t] = await Promise.all([r1.ok ? r1.json() : [], r2.ok ? r2.json() : []])
+        return [...a, ...t].sort((x, y) => new Date(y.published_at || 0) - new Date(x.published_at || 0))
+      })
+      .then((merged) => { if (merged) setPosts(merged) })
+      .catch(() => setPosts([]))
+      .finally(() => setLoading(false))
+  }, [secret, onSessionExpired])
+
+  useEffect(() => { load() }, [load])
+
+  const toggleFlag = async (post, flag) => {
+    setBusyId(post.id)
+    try {
+      const res = await fetch(`${BASE}/admin/blog/${post.id}/flags`, {
+        method: 'PATCH',
+        headers: { 'X-Admin-Secret': secret, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [flag]: !post[flag] }),
+      })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Update failed')
+      }
+      const updated = await res.json()
+      setPosts((ps) => ps.map((p) => (p.id === post.id ? updated : p)))
+    } catch (e) { alert(e.message) } finally { setBusyId(null) }
+  }
+
+  if (loading) return <div style={{ color: '#6b7280', fontSize: '.85rem' }}>Loading…</div>
+  if (posts.length === 0) return <div style={{ color: '#555', fontSize: '.85rem' }}>No approved articles yet.</div>
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {posts.map((p) => (
+        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '.6rem .8rem', background: '#161616', border: '1px solid #242424', borderRadius: 8 }}>
+          <div style={{ flex: 1, minWidth: 0, color: '#e5e7eb', fontSize: '.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {p.final_title || p.original_title}
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#9ca3af', fontSize: '.78rem', cursor: 'pointer', opacity: busyId === p.id ? 0.5 : 1 }}>
+            <input type="checkbox" checked={!!p.is_featured} disabled={busyId === p.id} onChange={() => toggleFlag(p, 'is_featured')} />
+            Featured
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#9ca3af', fontSize: '.78rem', cursor: 'pointer', opacity: busyId === p.id ? 0.5 : 1 }}>
+            <input type="checkbox" checked={!!p.is_popular} disabled={busyId === p.id} onChange={() => toggleFlag(p, 'is_popular')} />
+            Popular
+          </label>
+        </div>
+      ))}
     </div>
   )
 }
@@ -2660,6 +3092,7 @@ export default function SecretPanel() {
         {activeNav === 'earnings' && <EarningsView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'master-home' && <MasterHomeView secret={secret} onSessionExpired={handleLock} />}
         {activeNav === 'announcements' && <AnnouncementsView secret={secret} onSessionExpired={handleLock} />}
+        {activeNav === 'blog' && <BlogView secret={secret} onSessionExpired={handleLock} />}
         {subView && (
           <SubmissionsView key={subView.id} secret={secret} category={subView.id} title={subView.title} onSessionExpired={handleLock} />
         )}

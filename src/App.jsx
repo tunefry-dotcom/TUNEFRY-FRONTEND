@@ -87,7 +87,7 @@ export default function App() {
           <Route path="/song-transfer" element={<SongTransfer />} />
           <Route path="/content-id" element={<ContentId />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/article" element={<Article />} />
+          <Route path="/article/:slug" element={<Article />} />
         </Route>
 
         {/* Auth routes — standalone, no layout */}
