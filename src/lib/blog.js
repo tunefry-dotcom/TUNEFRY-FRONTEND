@@ -29,9 +29,10 @@ export function getCreditStatus() {
 }
 
 // { posts: [...], total, page, per_page, total_pages }
-export function getPosts({ category, page = 1, perPage = 12 } = {}) {
+export function getPosts({ category, q, page = 1, perPage = 12 } = {}) {
   const params = new URLSearchParams({ page: String(page), per_page: String(perPage) })
   if (category) params.set('category', category)
+  if (q && q.trim()) params.set('q', q.trim())
   return getJSON(`/blog/posts?${params.toString()}`)
 }
 

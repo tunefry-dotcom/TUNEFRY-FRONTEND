@@ -136,7 +136,7 @@ export default function AiBlog() {
         <div className="glass-card blog-form-card animate-in animate-in-delay-2" style={{ textAlign: 'center', padding: '40px 24px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '17px', fontWeight: 700, marginBottom: '8px' }}>Submitted for review</div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-            Our team will review your draft and let you know once it's published. You'll get a notification either way.
+            Our team will review your draft (usually within about 4 days) and let you know once it's published. You'll get a notification either way.
           </p>
           <Link to="/daily" className="btn btn-create">Back to Tunefry Daily</Link>
         </div>
@@ -151,7 +151,7 @@ export default function AiBlog() {
             </div>
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700 }}>Submit Your Draft</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Just give us a basic overview — our team will polish it before it goes live.</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Just give us a basic overview — our team will polish it and get it live in about 4 days.</div>
             </div>
           </div>
 

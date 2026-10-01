@@ -82,6 +82,12 @@
 }
 .art-main { padding-right: 44px; }
 .art-aside { border-left: 0.5px solid var(--bd); padding-left: 32px; padding-top: 0; }
+.art-wrap.no-aside {
+  display: block;
+  max-width: 780px;
+  padding: 0 36px 80px;
+}
+.art-wrap.no-aside .art-main { padding-right: 0; }
 
 /* ===== ARTICLE PROSE ===== */
 .prose { font-size: 15.5px; line-height: 1.78; color: var(--t2); }

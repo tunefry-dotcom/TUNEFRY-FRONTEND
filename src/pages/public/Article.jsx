@@ -163,7 +163,7 @@ export default function Article() {
       )}
 
       {/* ===================== ARTICLE WRAP ===================== */}
-      <div className="art-wrap">
+      <div className={`art-wrap${related3.length === 0 ? ' no-aside' : ''}`}>
 
         {/* MAIN CONTENT */}
         <div className="art-main au">
@@ -178,8 +178,8 @@ export default function Article() {
         </div>
 
         {/* SIDEBAR */}
-        <div className="art-aside">
-          {related3.length > 0 && (
+        {related3.length > 0 && (
+          <div className="art-aside">
             <div className="side-block au">
               <div className="side-title">Related articles</div>
               <div className="rel-list">
@@ -196,8 +196,8 @@ export default function Article() {
                 ))}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ===================== RELATED ARTICLES ===================== */}

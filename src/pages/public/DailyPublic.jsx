@@ -59,6 +59,8 @@ export default function DailyPublic() {
   const [page, setPage] = useState(1)
   const [listData, setListData] = useState(undefined) // undefined = loading, null = error
   const [allPosts, setAllPosts] = useState([])
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
 
   useScrollReveal([listData, allPosts])
 
@@ -69,11 +71,11 @@ export default function DailyPublic() {
   useEffect(() => {
     let cancelled = false
     setListData(undefined)
-    getPosts({ category: category || undefined, page, perPage: PER_PAGE })
+    getPosts({ category: category || undefined, q: search || undefined, page, perPage: PER_PAGE })
       .then((data) => { if (!cancelled) setListData(data) })
       .catch(() => { if (!cancelled) setListData(null) })
     return () => { cancelled = true }
-  }, [category, page])
+  }, [category, search, page])
 
   // Fetches every approved post once (across all pages) purely to derive the
   // Featured / Popular sections client-side — the backend has no is_featured
@@ -103,6 +105,11 @@ export default function DailyPublic() {
     setPage(1)
   }
 
+  function handleSearch() {
+    setSearch(searchInput.trim())
+    setPage(1)
+  }
+
   const categoryLabelMap = Object.fromEntries(categories.map((c) => [c.id, c.label]))
   const featured = allPosts.filter((p) => p.is_featured)
   const popular = allPosts.filter((p) => p.is_popular).slice(0, 4)
@@ -123,8 +130,14 @@ export default function DailyPublic() {
             </p>
           </div>
           <div className="daily-hero-search au au-d3">
-            <input type="text" placeholder="Search articles..." />
-            <button>Search</button>
+            <input
+              type="text"
+              placeholder="Search articles..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }}
+            />
+            <button onClick={handleSearch}>Search</button>
           </div>
         </div>
       </section>
@@ -179,7 +192,9 @@ export default function DailyPublic() {
             <div className="au" style={{ padding: '32px 0', textAlign: 'center', color: 'var(--t3)', fontSize: 13 }}>Couldn't load articles. Please refresh.</div>
           )}
           {Array.isArray(listData?.posts) && posts.length === 0 && (
-            <div className="au" style={{ padding: '32px 0', textAlign: 'center', color: 'var(--t3)', fontSize: 13 }}>No articles in this category yet.</div>
+            <div className="au" style={{ padding: '32px 0', textAlign: 'center', color: 'var(--t3)', fontSize: 13 }}>
+              {search ? `No articles found for "${search}".` : 'No articles in this category yet.'}
+            </div>
           )}
           {posts.length > 0 && (
             <>
