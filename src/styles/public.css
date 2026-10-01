@@ -927,24 +927,6 @@
 .btn-read { display: inline-flex; align-items: center; gap: 4px; padding: 7px 16px; border-radius: 8px; background: rgba(255,255,255,0.1); font-size: 12.5px; font-weight: 600; color: #fff; margin-top: 12px; transition: background .2s; }
 .btn-read:hover { background: rgba(255,255,255,0.18); }
 
-.card-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 32px; }
-.d-card {
-  background: var(--s1); border: 0.5px solid var(--bd); border-radius: 14px;
-  overflow: hidden; cursor: pointer; transition: border-color .25s;
-}
-.d-card:hover { border-color: var(--bd2); }
-.d-card-img { height: 140px; background: var(--s2); overflow: hidden; }
-.d-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
-.d-card:hover .d-card-img img { transform: scale(1.04); }
-.d-card-body { padding: 14px; }
-.d-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-.d-card-date { font-size: 11px; color: var(--t3); }
-.d-card-title { font-family: var(--font-d); font-size: 13.5px; font-weight: 700; line-height: 1.4; margin-bottom: 10px; }
-.d-card-foot { display: flex; align-items: center; justify-content: space-between; }
-.d-card-author { font-size: 11.5px; color: var(--t3); }
-.d-card-arrow { font-size: 13px; color: var(--t3); }
-.d-card:hover .d-card-arrow { color: var(--or); }
-
 .row-cards { display: flex; flex-direction: column; gap: 14px; margin-bottom: 32px; }
 .row-card {
   display: flex; background: var(--s1); border: 0.5px solid var(--bd); border-radius: 14px;
@@ -952,7 +934,8 @@
 }
 .row-card:hover { border-color: var(--bd2); }
 .row-card-img { width: 160px; min-height: 100px; background: var(--s2); flex-shrink: 0; overflow: hidden; }
-.row-card-img img { width: 100%; height: 100%; object-fit: cover; }
+.row-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+.row-card:hover .row-card-img img { transform: scale(1.04); }
 .row-card-body { padding: 16px 18px; flex: 1; }
 .row-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .row-card-title { font-family: var(--font-d); font-size: 14px; font-weight: 700; line-height: 1.35; margin-bottom: 8px; }
@@ -1201,7 +1184,6 @@
   .daily-hero-search input { width: 100%; }
   .daily-wrap { grid-template-columns: 1fr; padding: 28px 20px 60px; gap: 0; }
   .daily-aside { border-left: none; border-top: 0.5px solid var(--bd); padding: 32px 0 0; margin-top: 40px; }
-  .card-grid { grid-template-columns: 1fr; }
   .row-card { flex-direction: column; }
   .row-card-img { width: 100%; min-height: 160px; }
 

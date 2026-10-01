@@ -1883,6 +1883,20 @@ function ArtistBlogTab({ secret, onSessionExpired }) {
     } catch (e) { alert(e.message) } finally { setBusyId(null) }
   }
 
+  const deletePost = async (post) => {
+    if (!window.confirm(`Delete "${post.final_title || post.original_title}"? This cannot be undone.`)) return
+    setBusyId(post.id)
+    try {
+      const res = await fetch(`${BASE}/admin/blog/${post.id}`, { method: 'DELETE', headers: { 'X-Admin-Secret': secret } })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Delete failed')
+      }
+      setPosts((ps) => ps.filter((p) => p.id !== post.id))
+    } catch (e) { alert(e.message) } finally { setBusyId(null) }
+  }
+
   const inp = {
     background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7,
     padding: '.5rem .75rem', color: '#f0f0f0', fontSize: '.85rem',
@@ -1944,8 +1958,16 @@ function ArtistBlogTab({ secret, onSessionExpired }) {
               </>
             )}
 
-            {!pending && post.admin_note && (
-              <div style={{ color: '#9ca3af', fontSize: '.75rem', marginTop: 6, fontStyle: 'italic' }}>"{post.admin_note}"</div>
+            {!pending && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                {post.admin_note && (
+                  <div style={{ color: '#9ca3af', fontSize: '.75rem', fontStyle: 'italic', flex: 1 }}>"{post.admin_note}"</div>
+                )}
+                <button disabled={busyId === post.id} onClick={() => deletePost(post)}
+                  style={{ padding: '.4rem .75rem', borderRadius: 7, border: '1px solid rgba(248,113,113,.3)', background: 'rgba(248,113,113,.08)', color: '#f87171', fontSize: '.78rem', fontWeight: 600, cursor: busyId === post.id ? 'wait' : 'pointer', flexShrink: 0 }}>
+                  {busyId === post.id ? '…' : 'Delete'}
+                </button>
+              </div>
             )}
           </div>
         )
@@ -1965,6 +1987,7 @@ function TunefryBlogTab({ secret, onSessionExpired }) {
   const [msg, setMsg] = useState('')
   const [posts, setPosts] = useState([])
   const [loadingPosts, setLoadingPosts] = useState(true)
+  const [busyId, setBusyId] = useState(null)
 
   const loadPosts = useCallback(() => {
     setLoadingPosts(true)
@@ -2041,6 +2064,20 @@ function TunefryBlogTab({ secret, onSessionExpired }) {
     } catch (e) { setMsg(e.message) } finally { setPublishing(false) }
   }
 
+  const deletePost = async (post) => {
+    if (!window.confirm(`Delete "${post.final_title}"? This cannot be undone.`)) return
+    setBusyId(post.id)
+    try {
+      const res = await fetch(`${BASE}/admin/blog/${post.id}`, { method: 'DELETE', headers: { 'X-Admin-Secret': secret } })
+      if (res.status === 403) { onSessionExpired(); return }
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || 'Delete failed')
+      }
+      setPosts((ps) => ps.filter((p) => p.id !== post.id))
+    } catch (e) { alert(e.message) } finally { setBusyId(null) }
+  }
+
   const inp = {
     background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 7,
     padding: '.5rem .75rem', color: '#f0f0f0', fontSize: '.85rem',
@@ -2108,10 +2145,14 @@ function TunefryBlogTab({ secret, onSessionExpired }) {
               {p.cover_image_keys?.[0] && (
                 <img src={`${BASE}/blog/assets/${p.cover_image_keys[0]}`} alt="" style={{ width: 60, height: 45, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
               )}
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ color: '#f0f0f0', fontSize: '.9rem', fontWeight: 600 }}>{p.final_title}</div>
                 <div style={{ color: '#555', fontSize: '.75rem', marginTop: 2 }}>{BLOG_CATEGORIES.find((c) => c.id === p.category)?.label || p.category} · {p.published_at ? new Date(p.published_at).toLocaleString() : ''}</div>
               </div>
+              <button disabled={busyId === p.id} onClick={() => deletePost(p)}
+                style={{ padding: '.4rem .75rem', borderRadius: 7, border: '1px solid rgba(248,113,113,.3)', background: 'rgba(248,113,113,.08)', color: '#f87171', fontSize: '.78rem', fontWeight: 600, cursor: busyId === p.id ? 'wait' : 'pointer', flexShrink: 0 }}>
+                {busyId === p.id ? '…' : 'Delete'}
+              </button>
             </div>
           ))}
         </div>

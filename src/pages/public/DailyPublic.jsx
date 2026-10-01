@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getCategories, getPosts } from '../../lib/blog'
 import { API_BASE } from '../../lib/config'
 
-function useScrollReveal() {
+function useScrollReveal(deps) {
   useEffect(() => {
     const els = document.querySelectorAll('.pub-page .au')
     const io = new IntersectionObserver(
@@ -13,7 +13,7 @@ function useScrollReveal() {
     els.forEach((el) => io.observe(el))
     document.querySelectorAll('.daily-hero .au').forEach((el) => el.classList.add('vis'))
     return () => io.disconnect()
-  }, [])
+  }, deps)
 }
 
 const PER_PAGE = 12
@@ -52,7 +52,6 @@ function AuthorBadge({ authorType }) {
 }
 
 export default function DailyPublic() {
-  useScrollReveal()
   const navigate = useNavigate()
 
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
@@ -60,6 +59,8 @@ export default function DailyPublic() {
   const [page, setPage] = useState(1)
   const [listData, setListData] = useState(undefined) // undefined = loading, null = error
   const [allPosts, setAllPosts] = useState([])
+
+  useScrollReveal([listData, allPosts])
 
   useEffect(() => {
     getCategories().then((list) => { if (Array.isArray(list) && list.length) setCategories(list) }).catch(() => {})
@@ -183,22 +184,24 @@ export default function DailyPublic() {
           {posts.length > 0 && (
             <>
               <div className="sec-label au">Latest articles</div>
-              <div className="card-grid au">
+              <div className="row-cards au">
                 {posts.map((post) => (
-                  <div key={post.id} className="d-card" onClick={() => navigate(`/article/${post.slug}`)} style={{ cursor: 'pointer' }}>
-                    <div className="d-card-img">
+                  <div key={post.id} className="row-card" onClick={() => navigate(`/article/${post.slug}`)}>
+                    <div className="row-card-img">
                       {post.cover_image_key && <img src={`${API_BASE}/blog/assets/${post.cover_image_key}`} alt={post.title} />}
                     </div>
-                    <div className="d-card-body">
-                      <div className="d-card-meta">
+                    <div className="row-card-body">
+                      <div className="row-card-meta">
                         <span className={`tag ${CATEGORY_TAG_CLASS[post.category] || 'tag-or'}`}>{categoryLabelMap[post.category] || post.category}</span>
                         <AuthorBadge authorType={post.author_type} />
-                        <span className="d-card-date">{formatDate(post.published_at)}</span>
                       </div>
-                      <div className="d-card-title">{post.title}</div>
-                      <div className="d-card-foot">
-                        <span className="d-card-author">{post.author_name || (post.author_type === 'tunefry' ? 'Tunefry Team' : '')}</span>
-                        <span className="d-card-arrow">&rarr;</span>
+                      <div className="row-card-title">{post.title}</div>
+                      {post.excerpt && <div className="row-card-exc">{post.excerpt}</div>}
+                      <div className="row-card-foot">
+                        <span>{post.author_name || (post.author_type === 'tunefry' ? 'Tunefry Team' : '')}</span>
+                        <span>&middot;</span>
+                        <span>{formatDate(post.published_at)}</span>
+                        <span className="row-card-read">Read Article &rarr;</span>
                       </div>
                     </div>
                   </div>
