@@ -4,6 +4,16 @@ import { API_BASE as BASE } from '../../lib/config.js'
 const STORAGE_KEY = 'tunefry_admin_secret'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+// FastAPI 422s return `detail` as an array of {loc, msg} objects; stringifying that gives "[object Object]".
+export function errText(detail, fallback) {
+  if (typeof detail === 'string' && detail) return detail
+  if (Array.isArray(detail) && detail.length) {
+    return detail.map((d) => { const f = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : ''; return f && f !== 'body' ? `${f}: ${d.msg}` : d.msg }).join('; ')
+  }
+  if (detail && typeof detail.error === 'string') return detail.error
+  return fallback
+}
+
 // Pure reducer for the local optimistic update after an approve/decline PATCH.
 // Updates status in place — does NOT reorder the list (items must stay at their
 // original index; only their fade styling reacts to the new status).
@@ -1846,7 +1856,7 @@ function ArtistBlogTab({ secret, onSessionExpired }) {
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) {
         const b = await res.json().catch(() => ({}))
-        throw new Error(b.detail || 'Rewrite failed')
+        throw new Error(errText(b.detail, 'Rewrite failed'))
       }
       const { title, body } = await res.json()
       setDraft(post.id, { title, body })
@@ -1875,7 +1885,7 @@ function ArtistBlogTab({ secret, onSessionExpired }) {
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) {
         const b = await res.json().catch(() => ({}))
-        throw new Error(b.detail || 'Review failed')
+        throw new Error(errText(b.detail, 'Review failed'))
       }
       const updated = await res.json()
       setPosts((ps) => ps.map((p) => (p.id === post.id ? updated : p)))
@@ -1891,7 +1901,7 @@ function ArtistBlogTab({ secret, onSessionExpired }) {
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) {
         const b = await res.json().catch(() => ({}))
-        throw new Error(b.detail || 'Delete failed')
+        throw new Error(errText(b.detail, 'Delete failed'))
       }
       setPosts((ps) => ps.filter((p) => p.id !== post.id))
     } catch (e) { alert(e.message) } finally { setBusyId(null) }
@@ -2016,7 +2026,7 @@ function TunefryBlogTab({ secret, onSessionExpired }) {
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) {
         const b = await res.json().catch(() => ({}))
-        throw new Error(b.detail || 'Upload failed')
+        throw new Error(errText(b.detail, 'Upload failed'))
       }
       const { key } = await res.json()
       setImageKeys((keys) => [...keys, key])
@@ -2036,7 +2046,7 @@ function TunefryBlogTab({ secret, onSessionExpired }) {
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) {
         const b = await res.json().catch(() => ({}))
-        throw new Error(b.detail || 'Rewrite failed')
+        throw new Error(errText(b.detail, 'Rewrite failed'))
       }
       const data = await res.json()
       setTitle(data.title); setBody(data.body)
@@ -2055,7 +2065,7 @@ function TunefryBlogTab({ secret, onSessionExpired }) {
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) {
         const b = await res.json().catch(() => ({}))
-        throw new Error(b.detail || 'Publish failed')
+        throw new Error(errText(b.detail, 'Publish failed'))
       }
       setTitle(''); setBody(''); setImageKeys([]); setCategory(BLOG_CATEGORIES[0].id)
       setMsg('Published!')
@@ -2072,7 +2082,7 @@ function TunefryBlogTab({ secret, onSessionExpired }) {
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) {
         const b = await res.json().catch(() => ({}))
-        throw new Error(b.detail || 'Delete failed')
+        throw new Error(errText(b.detail, 'Delete failed'))
       }
       setPosts((ps) => ps.filter((p) => p.id !== post.id))
     } catch (e) { alert(e.message) } finally { setBusyId(null) }
@@ -2195,7 +2205,7 @@ function BlogCurationCard({ secret, onSessionExpired }) {
       if (res.status === 403) { onSessionExpired(); return }
       if (!res.ok) {
         const b = await res.json().catch(() => ({}))
-        throw new Error(b.detail || 'Update failed')
+        throw new Error(errText(b.detail, 'Update failed'))
       }
       const updated = await res.json()
       setPosts((ps) => ps.map((p) => (p.id === post.id ? updated : p)))
