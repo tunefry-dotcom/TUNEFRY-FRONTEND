@@ -32,7 +32,7 @@ const CMP_DATA = [
   { feat: 'Scheduled release',   tunefry: 'All plans',               others: 'Premium only' },
   { feat: 'Lifetime availability', tunefry: 'Free',                  others: 'Paid annually' },
   { feat: 'Customer support',    tunefry: 'Mail / call / WhatsApp',  others: 'Limited' },
-  { feat: 'Starting price',      tunefry: '₹0 Free',                 others: '$24.99/yr+',         boldT: true },
+  { feat: 'Starting price',      tunefry: '₹0 Free',               others: '$24.99/yr+',         boldT: true },
 ]
 
 const FAQ_ITEMS = [
@@ -172,6 +172,7 @@ export default function Pricing() {
             {PLANS.map((p, idx) => (
               <div key={p.id} className={`plan au${p.pop ? ' pop' : ''}${idx > 0 ? ` au-d${Math.min(idx, 4)}` : ''}`}>
                 {p.pop && <div className="pop-badge">Most Popular</div>}
+                {p.offerBadge}
                 {p.badge}
                 <div className="plan-icon">{p.icon}</div>
                 <div className="plan-name">

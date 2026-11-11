@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import '../../styles/checkout.css';
+import { DIWALI_OFFER_ACTIVE, DIWALI_PCT, DIWALI_LABEL, offerAmount } from '../../data/plans';
 
 // ── Plan Data ──────────────────────────────────────────────
 const PLANS = {
@@ -50,14 +51,21 @@ export default function Checkout() {
   }, []);
 
   // ── Price calculation ────────────────────────────────────
-  const base = p.price;
+  // List amounts first, then the Diwali offer (base and extras discounted separately,
+  // same floor rounding as the backend) — `total` is what is shown and submitted.
+  const listBase = p.price;
   const extraArtists = p.artistCounter ? Math.max(0, artistCount - 5) : 0;
-  const extras = extraArtists * PER_ARTIST;
+  const listExtras = extraArtists * PER_ARTIST;
+  const listTotal = listBase + listExtras;
+  const base = offerAmount(listBase);
+  const extras = offerAmount(listExtras);
   const total = base + extras;
+  const hasOffer = DIWALI_OFFER_ACTIVE && listTotal > 0;
+  const savings = listTotal - total;
   const baseLabel = p.artistCounter ? 'Base plan (5 artists)' : 'Plan price';
-  const basePriceText = '₹' + base.toLocaleString('en-IN');
+  const basePriceText = '₹' + listBase.toLocaleString('en-IN');
   const extraLabelText = 'Extra artists (' + extraArtists + ' × ₹' + PER_ARTIST.toLocaleString('en-IN') + ')';
-  const extraPriceText = '₹' + extras.toLocaleString('en-IN');
+  const extraPriceText = '₹' + listExtras.toLocaleString('en-IN');
   const totalText = total === 0 ? 'Free' : '₹' + total.toLocaleString('en-IN');
 
   function changeArtists(delta) {
@@ -104,7 +112,6 @@ export default function Checkout() {
 
     setPaying(true);
 
-    const extrasCalc = p.artistCounter ? Math.max(0, artistCount - 5) * PER_ARTIST : 0;
     const payload = {
       plan: currentPlan,
       full_name: fullNameVal,
@@ -112,7 +119,10 @@ export default function Checkout() {
       phone_number: phoneVal,
       label_name: p.labelField ? labelNameVal : undefined,
       artist_count: p.artistCounter ? artistCount : undefined,
-      total_amount: p.price + extrasCalc
+      total_amount: total,
+      list_amount: listTotal,
+      discount_pct: hasOffer ? DIWALI_PCT : 0,
+      offer: hasOffer ? DIWALI_LABEL : undefined
     };
 
     fetch('/api/checkout/submit', {
@@ -256,6 +266,12 @@ export default function Checkout() {
                   <span id="summaryExtraLabel">{extraLabelText}</span>
                   <strong id="summaryExtraPrice">{extraPriceText}</strong>
                 </div>
+                {hasOffer && (
+                  <div className="summary-line" id="summaryOfferLine" style={{ color: '#2DCA72' }}>
+                    <span>🪔 {DIWALI_LABEL} (−{DIWALI_PCT}%)</span>
+                    <strong>−₹{savings.toLocaleString('en-IN')}</strong>
+                  </div>
+                )}
               </div>
 
               <div className="summary-total-row">

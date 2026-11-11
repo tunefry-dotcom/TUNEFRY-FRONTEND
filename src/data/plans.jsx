@@ -3,7 +3,39 @@
 // Array order is ascending rank: free → single-song → starter → single-artist →
 // double-artist → label (index doubles as the tier rank for upgrade comparisons).
 
-export const PLANS = [
+// ── Diwali offer ───────────────────────────────────────────
+// Display-side mirror of the server's DIWALI_OFFER_* in billing/plans.py. The
+// server decides what is actually charged (Razorpay order amount); keep the two
+// in sync. Set DIWALI_OFFER_ACTIVE = false to show list prices again.
+export const DIWALI_OFFER_ACTIVE = true
+export const DIWALI_PCT = 10
+export const DIWALI_LABEL = 'Diwali Offer'
+
+// Discounted whole-rupee amount (floor, same rounding as the backend).
+export const offerAmount = (rupees) =>
+  DIWALI_OFFER_ACTIVE && rupees > 0 ? Math.floor((rupees * (100 - DIWALI_PCT)) / 100) : rupees
+
+const fmtINR = (n) => n.toLocaleString('en-IN')
+
+// Returns the plan with the offer applied: price → discounted, priceStrike → list.
+export function withOffer(plan) {
+  const list = Number(String(plan.price).replace(/,/g, ''))
+  if (!DIWALI_OFFER_ACTIVE || !(list > 0)) return plan
+  return {
+    ...plan,
+    price: fmtINR(offerAmount(list)),
+    priceStrike: '₹' + fmtINR(list),
+    listPrice: list,
+    offerPct: DIWALI_PCT,
+    offerBadge: (
+      <div style={{ display:'inline-flex',alignItems:'center',gap:6,background:'rgba(249,115,22,0.12)',border:'0.5px solid rgba(249,115,22,0.35)',borderRadius:100,padding:'4px 12px',fontSize:10.5,fontWeight:600,color:'#F97316',marginBottom:8,width:'fit-content' }}>
+        🪔 {DIWALI_LABEL} · {DIWALI_PCT}% off
+      </div>
+    ),
+  }
+}
+
+const LIST_PLANS = [
   {
     id: 'free', name: 'Free', tag: 'Get started at zero cost',
     price: '0', per: 'forever free',
@@ -168,3 +200,6 @@ export const PLANS = [
     warning: '⚠ Max. 5 artists. Royalties will be reduced if artist count exceeds 5.',
   },
 ]
+
+// Catalogue the UI renders: list prices with the Diwali offer applied.
+export const PLANS = LIST_PLANS.map(withOffer)

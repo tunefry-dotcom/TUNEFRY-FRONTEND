@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import '../../styles/home-page.css'
 import { getHomeContent } from '../../lib/home'
+import { DIWALI_OFFER_ACTIVE, DIWALI_PCT, DIWALI_LABEL, offerAmount } from '../../data/plans'
 
 function useScrollReveal() {
   useEffect(() => {
@@ -283,8 +284,8 @@ export default function Home() {
                   </svg>
                 </div>
                 <div className="fb-text">
-                  <span className="fb-val">&#8377;1,599</span>
-                  <span className="fb-lbl">/ year — Full plan</span>
+                  <span className="fb-val">&#8377;{offerAmount(1599).toLocaleString('en-IN')}</span>
+                  <span className="fb-lbl">/ year — Full plan{DIWALI_OFFER_ACTIVE ? ` (${DIWALI_LABEL})` : ''}</span>
                 </div>
               </div>
             </div>
@@ -1233,8 +1234,11 @@ export default function Home() {
               <div className="plan-tagline">For serious independent artists</div>
               <div className="plan-price-row">
                 <span className="plan-cur">&#8377;</span>
-                <span className="plan-val">1,599</span>
-                <span className="plan-per">/ year</span>
+                {DIWALI_OFFER_ACTIVE && (
+                  <span style={{ fontSize: 13, color: 'var(--t3)', textDecoration: 'line-through', marginRight: 8 }}>&#8377;1,599</span>
+                )}
+                <span className="plan-val">{offerAmount(1599).toLocaleString('en-IN')}</span>
+                <span className="plan-per">/ year{DIWALI_OFFER_ACTIVE ? ` · ${DIWALI_LABEL} ${DIWALI_PCT}% off` : ''}</span>
               </div>
               <div className="royalty-badge gr">&#10003; 100% royalties</div>
               <ul className="plan-feats-mini">
